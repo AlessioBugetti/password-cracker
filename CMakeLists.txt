@@ -9,3 +9,4 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/*.cc")
 
 add_executable(password-cracker main.cc ${SOURCES})
+add_executable(decryption-benchmark benchmarks/decryption-benchmark.cc ${SOURCES})
