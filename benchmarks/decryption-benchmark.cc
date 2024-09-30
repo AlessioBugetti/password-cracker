@@ -10,6 +10,7 @@
 #include <fstream>
 #include <getopt.h>
 #include <iostream>
+#include <omp.h>
 #include <random>
 #include <regex>
 #include <unistd.h>
@@ -102,71 +103,83 @@ main(int argc, char** argv)
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, passwords.size() - 1);
+    std::vector<std::string> randomPasswords;
+    randomPasswords.reserve(numExecutions);
+    for (int i = 0; i < numExecutions; ++i)
+    {
+        randomPasswords.push_back(passwords[dis(gen)]);
+    }
 
-    std::string randomPassword;
-    std::string salt = "Parallel";
+    std::string salt = "pc";
     std::string encryptedRandomPassword;
 
     double minTimeSeq = std::numeric_limits<double>::max();
     double maxTimeSeq = std::numeric_limits<double>::min();
-    double totalTimeSeq = 0.0;
+    double totalTime = 0.0;
 
-    double minTimePar = std::numeric_limits<double>::max();
-    double maxTimePar = std::numeric_limits<double>::min();
-    double totalTimePar = 0.0;
+    std::chrono::steady_clock::time_point startTime;
+    std::chrono::steady_clock::time_point endTime;
+    float time;
 
     for (int i = 0; i < numExecutions; ++i)
     {
-        randomPassword = passwords[dis(gen)];
-        encryptedRandomPassword = crypt(randomPassword.c_str(), salt.c_str());
+        encryptedRandomPassword = crypt(randomPasswords[i].c_str(), salt.c_str());
 
-        auto startTimeSeq = std::chrono::high_resolution_clock::now();
+        startTime = std::chrono::high_resolution_clock::now();
         auto [decryptedSeq, decryptedPasswordSeq] =
             sequentialDecryption->Decrypt(encryptedRandomPassword);
-        auto endTimeSeq = std::chrono::high_resolution_clock::now();
-        auto timeSeq =
-            std::chrono::duration_cast<std::chrono::microseconds>(endTimeSeq - startTimeSeq)
-                .count() /
-            1000.f;
+        endTime = std::chrono::high_resolution_clock::now();
+        time = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count() /
+               1000.f;
 
         if (decryptedSeq)
         {
-            if (timeSeq < minTimeSeq)
-                minTimeSeq = timeSeq;
-            if (timeSeq > maxTimeSeq)
-                maxTimeSeq = timeSeq;
-            totalTimeSeq += timeSeq;
+            if (time < minTimeSeq)
+                minTimeSeq = time;
+            if (time > maxTimeSeq)
+                maxTimeSeq = time;
+            totalTime += time;
         }
         else
         {
             std::cerr << "Error: Sequential Decryption failed" << std::endl;
         }
+    }
 
-        auto startTimePar = std::chrono::high_resolution_clock::now();
+    double avgTimeSeq = totalTime / numExecutions;
+
+    double minTimePar = std::numeric_limits<double>::max();
+    double maxTimePar = std::numeric_limits<double>::min();
+    totalTime = 0.0;
+
+    for (int i = 0; i < numExecutions; ++i)
+    {
+        encryptedRandomPassword = crypt(randomPasswords[i].c_str(), salt.c_str());
+
+        startTime = std::chrono::high_resolution_clock::now();
         auto [decryptedPar, decryptedPasswordPar] =
             parallelDecryption->Decrypt(encryptedRandomPassword);
-        auto endTimePar = std::chrono::high_resolution_clock::now();
-        auto timePar =
-            std::chrono::duration_cast<std::chrono::microseconds>(endTimePar - startTimePar)
-                .count() /
-            1000.f;
+        endTime = std::chrono::high_resolution_clock::now();
+        time = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count() /
+               1000.f;
+        std::cout << "Decrypted password: " << decryptedPasswordPar << " Time: " << time
+                  << std::endl;
 
         if (decryptedPar)
         {
-            if (timePar < minTimePar)
-                minTimePar = timePar;
-            if (timePar > maxTimePar)
-                maxTimePar = timePar;
-            totalTimePar += timePar;
+            if (time < minTimePar)
+                minTimePar = time;
+            if (time > maxTimePar)
+                maxTimePar = time;
+            totalTime += time;
         }
         else
         {
-            std::cerr << "Error: Parallel Decryption failed" << std::endl;
+            std::cerr << "Error: Sequential Decryption failed" << std::endl;
         }
     }
 
-    double avgTimeSeq = totalTimeSeq / numExecutions;
-    double avgTimePar = totalTimePar / numExecutions;
+    double avgTimePar = totalTime / numExecutions;
 
     std::cout << "Sequential Decryption:" << std::endl;
     std::cout << "Min time: " << minTimeSeq << " ms" << std::endl;

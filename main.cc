@@ -4,6 +4,7 @@
  * Author: Alessio Bugetti <alessiobugetti98@gmail.com>
  */
 
+#include "parallel-omp-decryption.h"
 #include "sequential-decryption.h"
 #include <fstream>
 #include <iostream>
@@ -46,16 +47,22 @@ main(int argc, char** argv)
     FilterPasswords(inputFile, outputFile);
 
     std::string password = "Maverick";
-    std::string salt = "parallel";
+    std::string salt = "pc";
 
-    DecryptionStrategy* decryptionStrategy = new SequentialDecryption();
+    DecryptionStrategy* decryptionStrategy = new ParallelOmpDecryption(36);
     decryptionStrategy->LoadPasswords(outputFile);
     std::string encryptedPassword = crypt(password.c_str(), salt.c_str());
 
+    auto startTime = std::chrono::high_resolution_clock::now();
     auto [decrypted, decryptedPassword] = decryptionStrategy->Decrypt(encryptedPassword);
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto time =
+        std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count() / 1000.f;
+
     if (decrypted)
     {
         std::cout << "Decrypted password: " << decryptedPassword << std::endl;
+        std::cout << "Time: " << time << " ms" << std::endl;
     }
     return 0;
 }
