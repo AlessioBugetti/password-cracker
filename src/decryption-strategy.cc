@@ -1,17 +1,29 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * Author: Alessio Bugetti <alessiobugetti98@gmail.com>
+ */
+
 #include "decryption-strategy.h"
 
 #include <fstream>
 
 namespace passwordcracker
 {
+
+DecryptionStrategy::DecryptionStrategy(std::vector<std::string> passwords)
+    : passwords(passwords)
+{
+}
+
 std::vector<std::string>
-DecryptionStrategy::getPasswords() const
+DecryptionStrategy::GetPasswords() const
 {
     return passwords;
 }
 
 void
-DecryptionStrategy::loadPasswords(const std::string& filepath)
+DecryptionStrategy::LoadPasswords(const std::string& filepath)
 {
     std::ifstream file(filepath);
     if (!file.is_open())

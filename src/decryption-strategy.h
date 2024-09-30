@@ -1,3 +1,9 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * Author: Alessio Bugetti <alessiobugetti98@gmail.com>
+ */
+
 #ifndef DECRYPTION_STRATEGY_H
 #define DECRYPTION_STRATEGY_H
 
@@ -12,11 +18,15 @@ class DecryptionStrategy
   public:
     DecryptionStrategy() = default;
 
-    std::vector<std::string> getPasswords() const;
+    DecryptionStrategy(std::vector<std::string> passwords);
 
-    void loadPasswords(const std::string& filepath);
+    virtual ~DecryptionStrategy() = default;
 
-    virtual std::tuple<bool, std::string> decrypt(const std::string& encryptedPassword) const = 0;
+    std::vector<std::string> GetPasswords() const;
+
+    void LoadPasswords(const std::string& filepath);
+
+    virtual std::tuple<bool, std::string> Decrypt(const std::string& encryptedPassword) const = 0;
 
   private:
     std::vector<std::string> passwords;

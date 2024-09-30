@@ -1,3 +1,9 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * Author: Alessio Bugetti <alessiobugetti98@gmail.com>
+ */
+
 #include "sequential-decryption.h"
 #include <fstream>
 #include <iostream>
@@ -7,7 +13,7 @@
 using namespace passwordcracker;
 
 void
-filter_passwords(const std::string& input_file, const std::string& output_file)
+FilterPasswords(const std::string& input_file, const std::string& output_file)
 {
     std::ifstream infile(input_file);
     std::ofstream outfile(output_file);
@@ -33,20 +39,20 @@ filter_passwords(const std::string& input_file, const std::string& output_file)
 }
 
 int
-main()
+main(int argc, char** argv)
 {
     std::string inputFile = "data/10-million-password-list-top-1000000.txt";
     std::string outputFile = "data/filtered-passwords.txt";
-    filter_passwords(inputFile, outputFile);
+    FilterPasswords(inputFile, outputFile);
 
     std::string password = "Maverick";
     std::string salt = "parallel";
 
     DecryptionStrategy* decryptionStrategy = new SequentialDecryption();
-    decryptionStrategy->loadPasswords(outputFile);
+    decryptionStrategy->LoadPasswords(outputFile);
     std::string encryptedPassword = crypt(password.c_str(), salt.c_str());
 
-    auto [decrypted, decryptedPassword] = decryptionStrategy->decrypt(encryptedPassword);
+    auto [decrypted, decryptedPassword] = decryptionStrategy->Decrypt(encryptedPassword);
     if (decrypted)
     {
         std::cout << "Decrypted password: " << decryptedPassword << std::endl;

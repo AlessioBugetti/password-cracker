@@ -1,3 +1,9 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * Author: Alessio Bugetti <alessiobugetti98@gmail.com>
+ */
+
 #include "sequential-decryption.h"
 
 #include <iostream>
@@ -6,10 +12,15 @@
 namespace passwordcracker
 {
 
-std::tuple<bool, std::string>
-SequentialDecryption::decrypt(const std::string& encryptedPassword) const
+SequentialDecryption::SequentialDecryption(std::vector<std::string> passwords)
+    : DecryptionStrategy(passwords)
 {
-    const std::vector<std::string>& passwords = getPasswords();
+}
+
+std::tuple<bool, std::string>
+SequentialDecryption::Decrypt(const std::string& encryptedPassword) const
+{
+    const std::vector<std::string>& passwords = GetPasswords();
     if (passwords.empty())
     {
         throw std::runtime_error("No passwords loaded");
