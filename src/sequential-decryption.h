@@ -21,7 +21,8 @@ class SequentialDecryption : public DecryptionStrategy
 
     ~SequentialDecryption() = default;
 
-    std::tuple<bool, std::string> Decrypt(const std::string& encryptedPassword) const override;
+    std::tuple<bool, std::string, double> Decrypt(
+        const std::string& encryptedPassword) const override;
 };
 
 } // namespace passwordcracker

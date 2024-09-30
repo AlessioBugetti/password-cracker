@@ -26,7 +26,8 @@ class DecryptionStrategy
 
     void LoadPasswords(const std::string& filepath);
 
-    virtual std::tuple<bool, std::string> Decrypt(const std::string& encryptedPassword) const = 0;
+    virtual std::tuple<bool, std::string, double> Decrypt(
+        const std::string& encryptedPassword) const = 0;
 
   private:
     std::vector<std::string> passwords;

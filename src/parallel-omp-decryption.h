@@ -27,7 +27,8 @@ class ParallelOmpDecryption : public DecryptionStrategy
 
     void SetNumThreads(int numThreads);
 
-    std::tuple<bool, std::string> Decrypt(const std::string& encryptedPassword) const override;
+    std::tuple<bool, std::string, double> Decrypt(
+        const std::string& encryptedPassword) const override;
 
   private:
     int numThreads;

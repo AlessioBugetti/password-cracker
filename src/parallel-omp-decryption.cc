@@ -6,8 +6,9 @@
 
 #include "parallel-omp-decryption.h"
 
+#include <crypt.h>
 #include <iostream>
-#include <unistd.h>
+#include <omp.h>
 
 namespace passwordcracker
 {
@@ -40,38 +41,71 @@ ParallelOmpDecryption::SetNumThreads(int numThreads)
     this->numThreads = numThreads;
 }
 
-std::tuple<bool, std::string>
+std::tuple<bool, std::string, double>
 ParallelOmpDecryption::Decrypt(const std::string& encryptedPassword) const
 {
-    bool found = false;
-    std::string decryptedPassword;
+    volatile bool found = false;
+    std::string decryptedPassword = "";
 
     const std::string& salt = encryptedPassword.substr(0, 2);
     const std::vector<std::string>& passwords = GetPasswords();
+    size_t numPasswords = passwords.size();
 
-#pragma omp parallel for num_threads(numThreads) shared(found, decryptedPassword)
-    for (size_t i = 0; i < passwords.size(); ++i)
+    omp_lock_t mtx;
+    omp_init_lock(&mtx);
+    double startTime = omp_get_wtime();
+
+#pragma omp parallel num_threads(numThreads) default(none)                                         \
+    shared(encryptedPassword, mtx, salt, found, passwords, decryptedPassword)
     {
-        if (found)
-            continue;
+        bool local_found = false;
+        std::string local_decryptedPassword;
 
-        const std::string& tmpPassword = passwords[i];
-        const std::string& encryptedTmpPassword = crypt(tmpPassword.c_str(), salt.c_str());
+        struct crypt_data data;
+        data.initialized = 0;
 
-        if (encryptedTmpPassword == encryptedPassword)
+        int threadNum = omp_get_thread_num();
+        int totalThreads = omp_get_num_threads();
+
+        int itemsPerThread = static_cast<int>(passwords.size() / totalThreads);
+        int threadStartIdx = threadNum * itemsPerThread;
+        int threadEndIdx =
+            std::min(threadStartIdx + itemsPerThread, static_cast<int>(passwords.size())) - 1;
+
+        for (int i = threadStartIdx; i <= threadEndIdx; ++i)
         {
-#pragma omp critical
+            if (found)
             {
-                if (!found)
-                {
-                    found = true;
-                    decryptedPassword = tmpPassword;
-                }
+                break;
             }
+
+            std::string encryptedTmpPassword = crypt_r(passwords[i].c_str(), salt.c_str(), &data);
+
+            if (encryptedTmpPassword == encryptedPassword)
+            {
+                local_found = true;
+                local_decryptedPassword = passwords[i];
+                break;
+            }
+        }
+
+        if (local_found)
+        {
+            omp_set_lock(&mtx);
+            if (!found)
+            {
+                found = true;
+                decryptedPassword = local_decryptedPassword;
+            }
+            omp_unset_lock(&mtx);
         }
     }
 
-    return {found, decryptedPassword};
+    double endTime = omp_get_wtime();
+
+    omp_destroy_lock(&mtx);
+
+    return {found, decryptedPassword, endTime - startTime};
 }
 
 } // namespace passwordcracker

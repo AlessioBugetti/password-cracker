@@ -4,11 +4,9 @@ project(PASSWORDCRACKER CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Xpreprocessor -fopenmp")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lomp")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 
-include_directories("/usr/local/opt/libomp/include")
-link_directories("/usr/local/opt/libomp/lib")
+find_package(OpenMP REQUIRED)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -30,3 +28,4 @@ add_subdirectory(src/test)
 file(GLOB SOURCES "${CMAKE_SOURCE_DIR}/src/*.cc")
 
 add_executable(main main.cc ${SOURCES})
+target_link_libraries(main password-cracker-lib)

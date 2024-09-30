@@ -6,7 +6,9 @@
 
 #include "parallel-omp-decryption.h"
 #include "sequential-decryption.h"
+
 #include <chrono>
+#include <crypt.h>
 #include <fstream>
 #include <getopt.h>
 #include <iostream>
@@ -16,6 +18,23 @@
 #include <unistd.h>
 
 using namespace passwordcracker;
+
+std::vector<std::string>
+GetPasswords(const std::string& filepath)
+{
+    std::ifstream file(filepath);
+    if (!file.is_open())
+    {
+        throw std::runtime_error("Could not open file: " + filepath);
+    }
+    std::vector<std::string> passwords;
+    std::string password;
+    while (std::getline(file, password))
+    {
+        passwords.push_back(password);
+    }
+    return passwords;
+}
 
 void
 FilterPasswords(const std::string& input_file, const std::string& output_file)
@@ -93,18 +112,11 @@ main(int argc, char** argv)
     std::string outputFile = "data/filtered-passwords.txt";
     FilterPasswords(inputFile, outputFile);
 
-    DecryptionStrategy* sequentialDecryption = new SequentialDecryption();
-    DecryptionStrategy* parallelDecryption = new ParallelOmpDecryption(numThreads);
-
-    sequentialDecryption->LoadPasswords(outputFile);
-    parallelDecryption->LoadPasswords(outputFile);
-
-    std::vector<std::string> passwords = sequentialDecryption->GetPasswords();
+    std::vector<std::string> passwords = GetPasswords(outputFile);
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, passwords.size() - 1);
     std::vector<std::string> randomPasswords;
-    randomPasswords.reserve(numExecutions);
     for (int i = 0; i < numExecutions; ++i)
     {
         randomPasswords.push_back(passwords[dis(gen)]);
@@ -113,73 +125,81 @@ main(int argc, char** argv)
     std::string salt = "pc";
     std::string encryptedRandomPassword;
 
+    DecryptionStrategy* sequentialDecryption = new SequentialDecryption();
+    DecryptionStrategy* parallelDecryption = new ParallelOmpDecryption(numThreads);
+
+    sequentialDecryption->LoadPasswords(inputFile);
+    parallelDecryption->LoadPasswords(inputFile);
+
     double minTimeSeq = std::numeric_limits<double>::max();
     double maxTimeSeq = std::numeric_limits<double>::min();
-    double totalTime = 0.0;
-
-    std::chrono::steady_clock::time_point startTime;
-    std::chrono::steady_clock::time_point endTime;
-    float time;
-
-    for (int i = 0; i < numExecutions; ++i)
-    {
-        encryptedRandomPassword = crypt(randomPasswords[i].c_str(), salt.c_str());
-
-        startTime = std::chrono::high_resolution_clock::now();
-        auto [decryptedSeq, decryptedPasswordSeq] =
-            sequentialDecryption->Decrypt(encryptedRandomPassword);
-        endTime = std::chrono::high_resolution_clock::now();
-        time = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count() /
-               1000.f;
-
-        if (decryptedSeq)
-        {
-            if (time < minTimeSeq)
-                minTimeSeq = time;
-            if (time > maxTimeSeq)
-                maxTimeSeq = time;
-            totalTime += time;
-        }
-        else
-        {
-            std::cerr << "Error: Sequential Decryption failed" << std::endl;
-        }
-    }
-
-    double avgTimeSeq = totalTime / numExecutions;
+    double totalTimeSeq = 0.0;
 
     double minTimePar = std::numeric_limits<double>::max();
     double maxTimePar = std::numeric_limits<double>::min();
-    totalTime = 0.0;
+    double totalTimePar = 0.0;
+
+    std::vector<double> speedups;
 
     for (int i = 0; i < numExecutions; ++i)
     {
         encryptedRandomPassword = crypt(randomPasswords[i].c_str(), salt.c_str());
 
-        startTime = std::chrono::high_resolution_clock::now();
-        auto [decryptedPar, decryptedPasswordPar] =
-            parallelDecryption->Decrypt(encryptedRandomPassword);
-        endTime = std::chrono::high_resolution_clock::now();
-        time = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count() /
-               1000.f;
-        std::cout << "Decrypted password: " << decryptedPasswordPar << " Time: " << time
-                  << std::endl;
+        auto [decryptedSeq, decryptedPasswordSeq, timeSeq] =
+            sequentialDecryption->Decrypt(encryptedRandomPassword);
 
-        if (decryptedPar)
+        if (decryptedSeq)
         {
-            if (time < minTimePar)
-                minTimePar = time;
-            if (time > maxTimePar)
-                maxTimePar = time;
-            totalTime += time;
+            if (timeSeq < minTimeSeq)
+                minTimeSeq = timeSeq;
+            if (timeSeq > maxTimeSeq)
+                maxTimeSeq = timeSeq;
+            totalTimeSeq += timeSeq;
         }
         else
         {
             std::cerr << "Error: Sequential Decryption failed" << std::endl;
         }
+
+        auto [decryptedPar, decryptedPasswordPar, timePar] =
+            parallelDecryption->Decrypt(encryptedRandomPassword);
+
+        if (decryptedPar)
+        {
+            if (timePar < minTimePar)
+                minTimePar = timePar;
+            if (timePar > maxTimePar)
+                maxTimePar = timePar;
+            totalTimePar += timePar;
+
+            if (timePar > 0.0)
+            {
+                speedups.push_back(timeSeq / timePar);
+            }
+        }
+        else
+        {
+            std::cerr << "Error: Parallel Decryption failed" << std::endl;
+        }
     }
 
-    double avgTimePar = totalTime / numExecutions;
+    double avgTimeSeq = totalTimeSeq / numExecutions;
+    double avgTimePar = totalTimePar / numExecutions;
+
+    double minSpeedup = std::numeric_limits<double>::max();
+    double maxSpeedup = std::numeric_limits<double>::min();
+    double totalSpeedup = 0.0;
+
+    for (double sp : speedups)
+    {
+        if (sp < minSpeedup)
+            minSpeedup = sp;
+        if (sp > maxSpeedup)
+            maxSpeedup = sp;
+        totalSpeedup += sp;
+    }
+
+    double avgSpeedup = speedups.empty() ? 0.0 : (totalSpeedup / speedups.size());
 
     std::cout << "Sequential Decryption:" << std::endl;
     std::cout << "Min time: " << minTimeSeq << " ms" << std::endl;
@@ -192,6 +212,13 @@ main(int argc, char** argv)
     std::cout << "Min time: " << minTimePar << " ms" << std::endl;
     std::cout << "Max time: " << maxTimePar << " ms" << std::endl;
     std::cout << "Average time: " << avgTimePar << " ms" << std::endl;
+
+    std::cout << std::endl;
+
+    std::cout << "Speedup:" << std::endl;
+    std::cout << "Min speedup: " << minSpeedup << "x" << std::endl;
+    std::cout << "Max speedup: " << maxSpeedup << "x" << std::endl;
+    std::cout << "Average speedup: " << avgSpeedup << "x" << std::endl;
 
     return 0;
 }
