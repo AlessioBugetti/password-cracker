@@ -7,11 +7,8 @@
 #include "parallel-omp-decryption.h"
 #include "sequential-decryption.h"
 
-#include <chrono>
-#include <fstream>
+#include <crypt.h>
 #include <iostream>
-#include <regex>
-#include <unistd.h>
 
 using namespace passwordcracker;
 

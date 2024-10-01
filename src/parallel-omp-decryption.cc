@@ -7,7 +7,6 @@
 #include "parallel-omp-decryption.h"
 
 #include <crypt.h>
-#include <iostream>
 #include <omp.h>
 
 namespace passwordcracker

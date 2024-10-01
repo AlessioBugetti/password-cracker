@@ -7,7 +7,6 @@
 #include "sequential-decryption.h"
 
 #include <crypt.h>
-#include <iostream>
 #include <omp.h>
 
 namespace passwordcracker
@@ -22,10 +21,6 @@ std::tuple<bool, std::string, double>
 SequentialDecryption::Decrypt(const std::string& encryptedPassword) const
 {
     const std::vector<std::string>& passwords = GetPasswords();
-    if (passwords.empty())
-    {
-        throw std::runtime_error("No passwords loaded");
-    }
     std::string salt = encryptedPassword.substr(0, 2);
     bool found = false;
     std::string decryptedPassword = "";
