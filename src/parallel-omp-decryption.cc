@@ -49,17 +49,18 @@ ParallelOmpDecryption::SetNumThreads(int numThreads)
 std::tuple<bool, std::string, double>
 ParallelOmpDecryption::Decrypt(const std::string& encryptedPassword) const
 {
-    int index = -1;
-
     std::string salt = encryptedPassword.substr(0, 2);
     const std::vector<std::string>& passwords = GetPasswords();
     int numPasswords = passwords.size();
 
     omp_set_num_threads(numThreads);
+    omp_set_dynamic(0);
+
+    int index = -1;
 
     double startTime = omp_get_wtime();
 
-#pragma omp parallel shared(index)
+#pragma omp parallel default(none) shared(index, passwords, encryptedPassword, salt, numPasswords)
     {
         struct crypt_data data;
         data.initialized = 0;
