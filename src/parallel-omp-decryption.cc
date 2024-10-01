@@ -44,68 +44,51 @@ ParallelOmpDecryption::SetNumThreads(int numThreads)
 std::tuple<bool, std::string, double>
 ParallelOmpDecryption::Decrypt(const std::string& encryptedPassword) const
 {
-    volatile bool found = false;
-    std::string decryptedPassword = "";
+    int index = -1;
 
-    const std::string& salt = encryptedPassword.substr(0, 2);
-    const std::vector<std::string>& passwords = GetPasswords();
-    size_t numPasswords = passwords.size();
+    std::string salt = encryptedPassword.substr(0, 2);
+    std::vector<std::string> passwords = GetPasswords();
+    int numPasswords = passwords.size();
 
-    omp_lock_t mtx;
-    omp_init_lock(&mtx);
+    omp_set_num_threads(numThreads);
+
     double startTime = omp_get_wtime();
 
-#pragma omp parallel num_threads(numThreads) default(none)                                         \
-    shared(encryptedPassword, mtx, salt, found, passwords, decryptedPassword)
+#pragma omp parallel shared(index)
     {
-        bool local_found = false;
-        std::string local_decryptedPassword;
-
         struct crypt_data data;
         data.initialized = 0;
+        int tmp_index;
 
-        int threadNum = omp_get_thread_num();
-        int totalThreads = omp_get_num_threads();
-
-        int itemsPerThread = static_cast<int>(passwords.size() / totalThreads);
-        int threadStartIdx = threadNum * itemsPerThread;
-        int threadEndIdx =
-            std::min(threadStartIdx + itemsPerThread, static_cast<int>(passwords.size())) - 1;
-
-        for (int i = threadStartIdx; i <= threadEndIdx; ++i)
+#pragma omp for
+        for (int i = 0; i < numPasswords; ++i)
         {
-            if (found)
+#pragma omp atomic read acquire
+            tmp_index = index;
+            if (tmp_index == -1)
             {
-                break;
-            }
+                std::string encryptedTmpPassword =
+                    crypt_r(passwords[i].c_str(), salt.c_str(), &data);
 
-            std::string encryptedTmpPassword = crypt_r(passwords[i].c_str(), salt.c_str(), &data);
-
-            if (encryptedTmpPassword == encryptedPassword)
-            {
-                local_found = true;
-                local_decryptedPassword = passwords[i];
-                break;
+                if (encryptedTmpPassword == encryptedPassword)
+                {
+#pragma omp atomic write release
+                    index = i;
+                }
             }
-        }
-
-        if (local_found)
-        {
-            omp_set_lock(&mtx);
-            if (!found)
-            {
-                found = true;
-                decryptedPassword = local_decryptedPassword;
-            }
-            omp_unset_lock(&mtx);
         }
     }
 
     double endTime = omp_get_wtime();
 
-    omp_destroy_lock(&mtx);
-
-    return {found, decryptedPassword, endTime - startTime};
+    if (index == -1)
+    {
+        return {false, "", endTime - startTime};
+    }
+    else
+    {
+        return {true, passwords[index], endTime - startTime};
+    }
 }
 
 } // namespace passwordcracker

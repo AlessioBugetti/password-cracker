@@ -19,32 +19,27 @@
 
 using namespace passwordcracker;
 
-std::vector<std::string>
-GetPasswords(const std::string& filepath)
+void
+DecompressTarGz(const std::string& inputFile, const std::string& outputFile)
 {
-    std::ifstream file(filepath);
-    if (!file.is_open())
+    std::string command = "tar -xzf " + inputFile + " -C " + outputFile;
+    int result = system(command.c_str());
+    if (result != 0)
     {
-        throw std::runtime_error("Could not open file: " + filepath);
+        throw std::runtime_error("Failed to extract " + inputFile);
     }
-    std::vector<std::string> passwords;
-    std::string password;
-    while (std::getline(file, password))
-    {
-        passwords.push_back(password);
-    }
-    return passwords;
 }
 
 void
-FilterPasswords(const std::string& input_file, const std::string& output_file)
+FilterPasswords(const std::string& filePath)
 {
-    std::ifstream infile(input_file);
-    std::ofstream outfile(output_file);
+    std::ifstream infile(filePath);
     std::string password;
     std::regex filterRegex(R"(^[a-zA-Z0-9./]{8}$)");
 
-    if (!infile.is_open() || !outfile.is_open())
+    std::vector<std::string> validPasswords;
+
+    if (!infile.is_open())
     {
         std::cerr << "Error opening file" << std::endl;
         return;
@@ -54,11 +49,22 @@ FilterPasswords(const std::string& input_file, const std::string& output_file)
     {
         if (std::regex_match(password, filterRegex))
         {
-            outfile << password << std::endl;
+            validPasswords.push_back(password);
         }
     }
-
     infile.close();
+
+    std::ofstream outfile(filePath, std::ios::trunc);
+    if (!outfile.is_open())
+    {
+        std::cerr << "Error opening file for writing" << std::endl;
+        return;
+    }
+
+    for (const auto& validPassword : validPasswords)
+    {
+        outfile << validPassword << std::endl;
+    }
     outfile.close();
 }
 
@@ -108,13 +114,38 @@ main(int argc, char** argv)
         return 1;
     }
 
-    std::string inputFile = "data/10-million-password-list-top-1000000.txt";
-    std::string outputFile = "data/filtered-passwords.txt";
-    FilterPasswords(inputFile, outputFile);
+    std::string inputFile = "data/rockyou.txt.tar.gz";
+    std::string outputDir = "data/";
+    std::string extractedFile = "data/rockyou.txt";
 
-    std::vector<std::string> passwords = GetPasswords(outputFile);
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    try
+    {
+        DecompressTarGz(inputFile, outputDir);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
+
+    FilterPasswords(extractedFile);
+
+    DecryptionStrategy* sequentialDecryption = new SequentialDecryption();
+    DecryptionStrategy* parallelDecryption = new ParallelOmpDecryption(numThreads);
+
+    sequentialDecryption->LoadPasswords(extractedFile);
+    parallelDecryption->LoadPasswords(extractedFile);
+
+    if (sequentialDecryption->GetPasswords().size() != parallelDecryption->GetPasswords().size())
+    {
+        std::cerr << "Error: Passwords loaded by sequential and parallel decryption are different"
+                  << std::endl;
+        return 1;
+    }
+
+    std::vector<std::string> passwords = sequentialDecryption->GetPasswords();
+    int seed = 42;
+    std::mt19937 gen(seed);
     std::uniform_int_distribution<> dis(0, passwords.size() - 1);
     std::vector<std::string> randomPasswords;
     for (int i = 0; i < numExecutions; ++i)
@@ -124,12 +155,6 @@ main(int argc, char** argv)
 
     std::string salt = "pc";
     std::string encryptedRandomPassword;
-
-    DecryptionStrategy* sequentialDecryption = new SequentialDecryption();
-    DecryptionStrategy* parallelDecryption = new ParallelOmpDecryption(numThreads);
-
-    sequentialDecryption->LoadPasswords(inputFile);
-    parallelDecryption->LoadPasswords(inputFile);
 
     double minTimeSeq = std::numeric_limits<double>::max();
     double maxTimeSeq = std::numeric_limits<double>::min();

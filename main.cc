@@ -18,9 +18,9 @@ using namespace passwordcracker;
 int
 main(int argc, char** argv)
 {
-    std::string inputFile = "data/10-million-password-list-top-1000000.txt";
+    std::string inputFile = "data/rockyou.txt";
 
-    std::string password = "Maverick";
+    std::string password = "sully123";
     std::string salt = "pc";
 
     DecryptionStrategy* decryptionStrategy = new ParallelOmpDecryption(4);
