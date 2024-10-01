@@ -10,8 +10,10 @@
 #include <crypt.h>
 #include <fstream>
 #include <getopt.h>
+#include <iomanip>
 #include <iostream>
 #include <omp.h>
+#include <optional>
 #include <random>
 #include <regex>
 
@@ -69,46 +71,53 @@ FilterPasswords(const std::string& filePath)
 int
 main(int argc, char** argv)
 {
-    int numExecutions = 2;
-    bool numExecutionsSpecified = false;
-    int numThreads = 4;
-    bool numThreadsSpecified = false;
+    std::optional<int> numExecutions;
 
-    struct option longOptions[] = {{"numExecutions", required_argument, 0, 'e'},
-                                   {"numThreads", required_argument, 0, 't'},
-                                   {0, 0}};
+    struct option longOptions[] = {{"numExecutions", required_argument, nullptr, 'e'},
+                                   {"help", no_argument, nullptr, 'h'},
+                                   {nullptr, 0, nullptr, 0}};
 
     int optionIndex = 0;
     int c;
-    while ((c = getopt_long(argc, argv, "spe:t:", longOptions, &optionIndex)) != -1)
+
+    while ((c = getopt_long(argc, argv, "he:", longOptions, &optionIndex)) != -1)
     {
         switch (c)
         {
         case 'e':
-            numExecutions = std::stoi(optarg);
-            numExecutionsSpecified = true;
+            try
+            {
+                numExecutions = std::stoi(optarg);
+                if (numExecutions.value() <= 0)
+                {
+                    throw std::invalid_argument("must be a positive integer");
+                }
+            }
+            catch (const std::exception& ex)
+            {
+                std::cerr << "Error: Invalid value for --numExecutions: " << optarg << " ("
+                          << ex.what() << "). Must be a positive integer" << std::endl;
+                return 1;
+            }
             break;
-        case 't':
-            numThreads = std::stoi(optarg);
-            numThreadsSpecified = true;
-            break;
-        default:
-            std::cerr << "Usage: " << argv[0] << " [--numExecutions=<num>] [--numThreads=<num>]"
+        case 'h':
+            std::cout << "Usage: " << argv[0] << " [--numExecutions=<num>] [--help]" << std::endl;
+            std::cout << "Options:" << std::endl;
+            std::cout << "  -e, --numExecutions=<num>  Specify the number of executions (must be a "
+                         "positive integer)"
                       << std::endl;
+            std::cout << "  -h, --help                 Show this help message" << std::endl;
+            return 0;
+        default:
+            std::cerr << "Usage: " << argv[0] << " [--numExecutions=<num>] [--help]" << std::endl;
             return 1;
         }
     }
 
-    if (!numExecutionsSpecified)
+    if (!numExecutions.has_value())
     {
-        std::cerr << "Error: You must specify --numExecutions for the number of executions."
+        std::cerr << "Error: You must specify --numExecutions for the number of executions"
                   << std::endl;
-        return 1;
-    }
-
-    if (!numThreadsSpecified)
-    {
-        std::cerr << "Error: You must specify --numThreads for parallel mode." << std::endl;
         return 1;
     }
 
@@ -128,50 +137,60 @@ main(int argc, char** argv)
 
     FilterPasswords(extractedFile);
 
-    DecryptionStrategy* sequentialDecryption = new SequentialDecryption();
-    DecryptionStrategy* parallelDecryption = new ParallelOmpDecryption(numThreads);
+    SequentialDecryption sequentialDecryption = SequentialDecryption();
+    ParallelOmpDecryption parallelDecryption = ParallelOmpDecryption();
 
-    sequentialDecryption->LoadPasswords(extractedFile);
-    parallelDecryption->LoadPasswords(extractedFile);
+    sequentialDecryption.LoadPasswords(extractedFile);
+    parallelDecryption.LoadPasswords(extractedFile);
 
-    if (sequentialDecryption->GetPasswords().size() != parallelDecryption->GetPasswords().size())
+    if (sequentialDecryption.GetPasswords().size() != parallelDecryption.GetPasswords().size())
     {
         std::cerr << "Error: Passwords loaded by sequential and parallel decryption are different"
                   << std::endl;
         return 1;
     }
 
-    std::vector<std::string> passwords = sequentialDecryption->GetPasswords();
+    std::vector<std::string> passwords = sequentialDecryption.GetPasswords();
     int seed = 42;
     std::mt19937 gen(seed);
     std::uniform_int_distribution<> dis(0, passwords.size() - 1);
     std::vector<std::string> randomPasswords;
+    randomPasswords.reserve(numExecutions.value());
     for (int i = 0; i < numExecutions; ++i)
     {
         randomPasswords.push_back(passwords[dis(gen)]);
     }
 
     std::string salt = "pc";
-    std::string encryptedRandomPassword;
+
+    std::vector<std::string> encryptedRandomPasswords;
+    encryptedRandomPasswords.reserve(numExecutions.value());
+
+    for (int i = 0; i < numExecutions; ++i)
+    {
+        encryptedRandomPasswords.push_back(crypt(randomPasswords[i].c_str(), salt.c_str()));
+    }
+
+    std::vector<int> numThreads = {0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64};
+
+    struct ParallelStats
+    {
+        double minTimePar = std::numeric_limits<double>::max();
+        double maxTimePar = std::numeric_limits<double>::min();
+        double totalTimePar = 0.0;
+    };
+
+    std::map<int, ParallelStats> parallelStatsMap;
 
     double minTimeSeq = std::numeric_limits<double>::max();
     double maxTimeSeq = std::numeric_limits<double>::min();
     double totalTimeSeq = 0.0;
 
-    double minTimePar = std::numeric_limits<double>::max();
-    double maxTimePar = std::numeric_limits<double>::min();
-    double totalTimePar = 0.0;
-
-    std::vector<double> speedups;
-
     for (int i = 0; i < numExecutions; ++i)
     {
-        encryptedRandomPassword = crypt(randomPasswords[i].c_str(), salt.c_str());
-
-        auto [decryptedSeq, decryptedPasswordSeq, timeSeq] =
-            sequentialDecryption->Decrypt(encryptedRandomPassword);
-
-        if (decryptedSeq)
+        auto [foundSeq, decryptedPasswordSeq, timeSeq] =
+            sequentialDecryption.Decrypt(encryptedRandomPasswords[i]);
+        if (foundSeq)
         {
             if (timeSeq < minTimeSeq)
                 minTimeSeq = timeSeq;
@@ -181,67 +200,58 @@ main(int argc, char** argv)
         }
         else
         {
-            std::cerr << "Error: Sequential Decryption failed" << std::endl;
+            std::cerr << "Error: Sequential Decryption failed for execution " << i + 1 << std::endl;
         }
 
-        auto [decryptedPar, decryptedPasswordPar, timePar] =
-            parallelDecryption->Decrypt(encryptedRandomPassword);
-
-        if (decryptedPar)
+        for (const int& numThread : numThreads)
         {
-            if (timePar < minTimePar)
-                minTimePar = timePar;
-            if (timePar > maxTimePar)
-                maxTimePar = timePar;
-            totalTimePar += timePar;
-
-            if (timePar > 0.0)
+            parallelDecryption.SetNumThreads(numThread);
+            auto [foundPar, decryptedPasswordPar, timePar] =
+                parallelDecryption.Decrypt(encryptedRandomPasswords[i]);
+            if (foundPar)
             {
-                speedups.push_back(timeSeq / timePar);
+                ParallelStats& parStats = parallelStatsMap[numThread];
+                if (timePar < parStats.minTimePar)
+                    parStats.minTimePar = timePar;
+                if (timePar > parStats.maxTimePar)
+                    parStats.maxTimePar = timePar;
+                parStats.totalTimePar += timePar;
+            }
+            else
+            {
+                std::cerr << "Error: Parallel Decryption failed for execution " << i + 1 << " with "
+                          << numThread << " threads" << std::endl;
             }
         }
-        else
-        {
-            std::cerr << "Error: Parallel Decryption failed" << std::endl;
-        }
     }
 
-    double avgTimeSeq = totalTimeSeq / numExecutions;
-    double avgTimePar = totalTimePar / numExecutions;
-
-    double minSpeedup = std::numeric_limits<double>::max();
-    double maxSpeedup = std::numeric_limits<double>::min();
-    double totalSpeedup = 0.0;
-
-    for (double sp : speedups)
-    {
-        if (sp < minSpeedup)
-            minSpeedup = sp;
-        if (sp > maxSpeedup)
-            maxSpeedup = sp;
-        totalSpeedup += sp;
-    }
-
-    double avgSpeedup = speedups.empty() ? 0.0 : (totalSpeedup / speedups.size());
+    double avgTimeSeq = totalTimeSeq / numExecutions.value();
 
     std::cout << "Sequential Decryption:" << std::endl;
-    std::cout << "Min time: " << minTimeSeq << " ms" << std::endl;
-    std::cout << "Max time: " << maxTimeSeq << " ms" << std::endl;
-    std::cout << "Average time: " << avgTimeSeq << " ms" << std::endl;
 
-    std::cout << std::endl;
+    std::cout << std::left << std::setw(20) << "Min Time (ms)" << std::setw(20) << "Max Time (ms)"
+              << std::setw(20) << "Avg Time (ms)" << std::endl;
 
-    std::cout << "Parallel Decryption:" << std::endl;
-    std::cout << "Min time: " << minTimePar << " ms" << std::endl;
-    std::cout << "Max time: " << maxTimePar << " ms" << std::endl;
-    std::cout << "Average time: " << avgTimePar << " ms" << std::endl;
+    std::cout << std::left << std::setw(20) << minTimeSeq << std::setw(20) << maxTimeSeq
+              << std::setw(20) << avgTimeSeq << std::endl;
 
-    std::cout << std::endl;
+    std::cout << "\nParallel Decryption and Speedup:" << std::endl;
 
-    std::cout << "Speedup:" << std::endl;
-    std::cout << "Min speedup: " << minSpeedup << "x" << std::endl;
-    std::cout << "Max speedup: " << maxSpeedup << "x" << std::endl;
-    std::cout << "Average speedup: " << avgSpeedup << "x" << std::endl;
+    std::cout << std::left << std::setw(12) << "Threads" << std::right << std::setw(20)
+              << "Min Time (ms)" << std::setw(20) << "Max Time (ms)" << std::setw(20)
+              << "Avg Time (ms)" << std::setw(20) << "Speedup" << std::endl;
+
+    for (const int& numThread : numThreads)
+    {
+        const ParallelStats& parStats = parallelStatsMap[numThread];
+
+        double avgTimePar = parStats.totalTimePar / numExecutions.value();
+        double speedup = totalTimeSeq / parStats.totalTimePar;
+
+        std::cout << std::left << std::setw(12) << numThread << std::right << std::setw(20)
+                  << parStats.minTimePar << std::setw(20) << parStats.maxTimePar << std::setw(20)
+                  << avgTimePar << std::setw(20) << speedup << std::endl;
+    }
 
     return 0;
 }

@@ -15,6 +15,8 @@ namespace passwordcracker
 class ParallelOmpDecryption : public DecryptionStrategy
 {
   public:
+    ParallelOmpDecryption();
+
     ParallelOmpDecryption(int numThreads);
 
     ParallelOmpDecryption(std::vector<std::string> passwords);

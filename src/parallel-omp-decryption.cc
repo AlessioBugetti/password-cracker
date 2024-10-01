@@ -12,13 +12,19 @@
 namespace passwordcracker
 {
 
+ParallelOmpDecryption::ParallelOmpDecryption()
+    : numThreads(omp_get_max_threads())
+{
+}
+
 ParallelOmpDecryption::ParallelOmpDecryption(int numThreads)
     : numThreads(numThreads)
 {
 }
 
 ParallelOmpDecryption::ParallelOmpDecryption(std::vector<std::string> passwords)
-    : DecryptionStrategy(passwords)
+    : DecryptionStrategy(passwords),
+      numThreads(omp_get_max_threads())
 {
 }
 
@@ -46,7 +52,7 @@ ParallelOmpDecryption::Decrypt(const std::string& encryptedPassword) const
     int index = -1;
 
     std::string salt = encryptedPassword.substr(0, 2);
-    std::vector<std::string> passwords = GetPasswords();
+    const std::vector<std::string>& passwords = GetPasswords();
     int numPasswords = passwords.size();
 
     omp_set_num_threads(numThreads);

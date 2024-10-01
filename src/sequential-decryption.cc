@@ -25,7 +25,7 @@ SequentialDecryption::Decrypt(const std::string& encryptedPassword) const
     bool found = false;
     std::string decryptedPassword = "";
     double startTime = omp_get_wtime();
-    for (const auto& tmpPassword : passwords)
+    for (auto tmpPassword : passwords)
     {
         std::string encryptedTmpPassword = crypt(tmpPassword.c_str(), salt.c_str());
         if (encryptedTmpPassword == encryptedPassword)
