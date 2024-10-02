@@ -5,11 +5,9 @@
  */
 
 #include "sequential-decryption.h"
-
 #include <gtest/gtest.h>
 
-namespace passwordcracker
-{
+using namespace passwordcracker;
 
 TEST(SequentialDecryptionTest, DecryptSuccess)
 {
@@ -34,5 +32,3 @@ TEST(SequentialDecryptionTest, DecryptFailure)
     EXPECT_FALSE(found);
     EXPECT_EQ(decryptedPassword, "");
 }
-
-} // namespace passwordcracker
