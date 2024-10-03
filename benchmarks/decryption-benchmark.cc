@@ -6,16 +6,15 @@
 
 #include "parallel-omp-decryption.h"
 #include "sequential-decryption.h"
-
-#include <crypt.h>
 #include <fstream>
 #include <getopt.h>
 #include <iomanip>
 #include <iostream>
-#include <omp.h>
+#include <map>
 #include <optional>
 #include <random>
 #include <regex>
+#include <unistd.h>
 
 using namespace passwordcracker;
 
@@ -137,20 +136,20 @@ main(int argc, char** argv)
 
     FilterPasswords(extractedFile);
 
-    SequentialDecryption sequentialDecryption = SequentialDecryption();
-    ParallelOmpDecryption parallelDecryption = ParallelOmpDecryption();
+    auto sequentialDecryption = std::make_unique<SequentialDecryption>();
+    auto parallelDecryption = std::make_unique<ParallelOmpDecryption>();
 
-    sequentialDecryption.LoadPasswords(extractedFile);
-    parallelDecryption.LoadPasswords(extractedFile);
+    sequentialDecryption->LoadPasswords(extractedFile);
+    parallelDecryption->LoadPasswords(extractedFile);
 
-    if (sequentialDecryption.GetPasswords().size() != parallelDecryption.GetPasswords().size())
+    if (sequentialDecryption->GetPasswords().size() != parallelDecryption->GetPasswords().size())
     {
         std::cerr << "Error: Passwords loaded by sequential and parallel decryption are different"
                   << std::endl;
         return 1;
     }
 
-    std::vector<std::string> passwords = sequentialDecryption.GetPasswords();
+    std::vector<std::string> passwords = sequentialDecryption->GetPasswords();
     int seed = 42;
     std::mt19937 gen(seed);
     std::uniform_int_distribution<> dis(0, passwords.size() - 1);
@@ -171,7 +170,7 @@ main(int argc, char** argv)
         encryptedRandomPasswords.push_back(crypt(randomPasswords[i].c_str(), salt.c_str()));
     }
 
-    std::vector<int> numThreads = {0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64};
+    int numThreads[] = {0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64};
 
     struct ParallelStats
     {
@@ -189,7 +188,7 @@ main(int argc, char** argv)
     for (int i = 0; i < numExecutions; ++i)
     {
         auto [foundSeq, decryptedPasswordSeq, timeSeq] =
-            sequentialDecryption.Decrypt(encryptedRandomPasswords[i]);
+            sequentialDecryption->Decrypt(encryptedRandomPasswords[i]);
         if (foundSeq)
         {
             if (timeSeq < minTimeSeq)
@@ -205,9 +204,9 @@ main(int argc, char** argv)
 
         for (const int& numThread : numThreads)
         {
-            parallelDecryption.SetNumThreads(numThread);
+            parallelDecryption->SetNumThreads(numThread);
             auto [foundPar, decryptedPasswordPar, timePar] =
-                parallelDecryption.Decrypt(encryptedRandomPasswords[i]);
+                parallelDecryption->Decrypt(encryptedRandomPasswords[i]);
             if (foundPar)
             {
                 ParallelStats& parStats = parallelStatsMap[numThread];

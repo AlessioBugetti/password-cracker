@@ -6,7 +6,12 @@
 
 #include "parallel-omp-decryption.h"
 
+#ifdef __linux__
 #include <crypt.h>
+#else
+#define OPENSSL_SUPPRESS_DEPRECATED
+#include <openssl/des.h>
+#endif
 #include <omp.h>
 
 namespace passwordcracker
@@ -62,10 +67,13 @@ ParallelOmpDecryption::Decrypt(const std::string& encryptedPassword) const
 
 #pragma omp parallel default(none) shared(index, passwords, encryptedPassword, salt, numPasswords)
     {
+#ifdef __linux__
         struct crypt_data data;
         data.initialized = 0;
+#else
+        char data[14] = {0};
+#endif
         int tmp_index;
-
 #pragma omp for
         for (int i = 0; i < numPasswords; ++i)
         {
@@ -73,8 +81,13 @@ ParallelOmpDecryption::Decrypt(const std::string& encryptedPassword) const
             tmp_index = index;
             if (tmp_index == -1)
             {
+#ifdef __linux__
                 std::string encryptedTmpPassword =
                     crypt_r(passwords[i].c_str(), salt.c_str(), &data);
+#else
+                DES_fcrypt(passwords[i].c_str(), salt.c_str(), data);
+                std::string encryptedTmpPassword(data);
+#endif
 
                 if (encryptedTmpPassword == encryptedPassword)
                 {

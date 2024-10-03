@@ -6,7 +6,12 @@
 
 #include "sequential-decryption.h"
 
+#ifdef __linux__
 #include <crypt.h>
+#else
+#define OPENSSL_SUPPRESS_DEPRECATED
+#include <openssl/des.h>
+#endif
 #include <omp.h>
 
 namespace passwordcracker
@@ -25,9 +30,19 @@ SequentialDecryption::Decrypt(const std::string& encryptedPassword) const
     bool found = false;
     std::string decryptedPassword = "";
     double startTime = omp_get_wtime();
+#ifdef __linux__
+    struct crypt_data data;
+    data.initialized = 0;
+#else
+    char data[14] = {0};
+#endif
     for (auto tmpPassword : passwords)
     {
-        std::string encryptedTmpPassword = crypt(tmpPassword.c_str(), salt.c_str());
+#ifdef __linux__
+        std::string encryptedTmpPassword = crypt_r(tmpPassword.c_str(), salt.c_str(), &data);
+#else
+        std::string encryptedTmpPassword = DES_fcrypt(tmpPassword.c_str(), salt.c_str(), data);
+#endif
         if (encryptedTmpPassword == encryptedPassword)
         {
             found = true;

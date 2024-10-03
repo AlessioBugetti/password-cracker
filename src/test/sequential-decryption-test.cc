@@ -6,6 +6,7 @@
 
 #include "sequential-decryption.h"
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 using namespace passwordcracker;
 

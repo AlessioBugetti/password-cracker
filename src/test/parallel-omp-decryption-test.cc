@@ -6,6 +6,7 @@
 
 #include "parallel-omp-decryption.h"
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 using namespace passwordcracker;
 
@@ -15,7 +16,7 @@ TEST(ParallelOmpDecryptionTest, DecryptSuccess)
     std::vector<std::string> passwords = {"acqua", "vento", "aria", "fuoco"};
     std::string password = "vento";
     std::string salt = "pc";
-    DecryptionStrategy* decryptor = new ParallelOmpDecryption(numThreads, passwords);
+    auto decryptor = std::make_unique<ParallelOmpDecryption>(numThreads, passwords);
 
     std::string encryptedPassword = crypt(password.c_str(), salt.c_str());
     auto [found, decryptedPassword, time] = decryptor->Decrypt(encryptedPassword);
@@ -30,7 +31,7 @@ TEST(ParallelOmpDecryptionTest, DecryptFailure)
     std::vector<std::string> passwords = {"acqua", "vento", "aria", "fuoco"};
     std::string password = "terra";
     std::string salt = "pc";
-    DecryptionStrategy* decryptor = new ParallelOmpDecryption(numThreads, passwords);
+    auto decryptor = std::make_unique<ParallelOmpDecryption>(numThreads, passwords);
 
     std::string encryptedPassword = crypt(password.c_str(), salt.c_str());
     auto [found, decryptedPassword, time] = decryptor->Decrypt(encryptedPassword);
