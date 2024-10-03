@@ -1,0 +1,29 @@
+DOXYFILE_VERSION         = 1.12.0
+
+PROJECT_NAME             = "Password Cracker"
+OUTPUT_DIRECTORY         = doc
+CREATE_SUBDIRS           = NO
+
+INPUT                    = ./src ./doc/main.h
+INPUT_ENCODING           = UTF-8
+RECURSIVE                = YES
+
+FILTER_SOURCE_FILES      = YES
+
+FILE_PATTERNS            = *.h
+
+GENERATE_HTML            = YES
+HTML_OUTPUT              = html
+HTML_COLORSTYLE_HUE      = 209
+HTML_COLORSTYLE_SAT      = 255
+HTML_COLORSTYLE_GAMMA    = 113
+GENERATE_LATEX           = NO
+GENERATE_XML             = NO
+
+GENERATE_TREEVIEW        = YES
+
+OPTIMIZE_OUTPUT_FOR_C    = YES
+BUILTIN_STL_SUPPORT      = YES
+
+QUIET                    = NO
+WARN_AS_ERROR            = NO
