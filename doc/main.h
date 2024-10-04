@@ -11,4 +11,20 @@
  * - @ref passwordcracker::ParallelDecryptor "ParallelDecryptor"
  * - @ref passwordcracker::SequentialDecryptor "SequentialDecryptor"
  * - @ref passwordcracker::ParallelOmpDecryptor "ParallelOmpDecryptor"
+ *
+ * @section inheritance Class Inheritance
+ * The class inheritance structure is as follows:
+ *
+ * ```
+ * Decryptor (abstract)
+ *     ├── SequentialDecryptor
+ *     └── ParallelDecryptor (abstract)
+ *             └── ParallelOmpDecryptor
+ * ```
+ *
+ * - `Decryptor` is an abstract base class.
+ * - `ParallelDecryptor` is an abstract class that inherits from `Decryptor`.
+ * - `SequentialDecryptor` inherits from `Decryptor` and is a concrete class.
+ * - `ParallelOmpDecryptor` inherits from `ParallelDecryptor` and implements parallel decryption
+ * using OpenMP.
  */
