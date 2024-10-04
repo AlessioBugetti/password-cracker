@@ -8,6 +8,7 @@
  * @section class Class overview
  * The following classes are implemented:
  * - @ref passwordcracker::Decryptor "Decryptor"
+ * - @ref passwordcracker::ParallelDecryptor "ParallelDecryptor"
  * - @ref passwordcracker::SequentialDecryptor "SequentialDecryptor"
  * - @ref passwordcracker::ParallelOmpDecryptor "ParallelOmpDecryptor"
  */

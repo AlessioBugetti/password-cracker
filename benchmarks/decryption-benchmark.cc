@@ -17,6 +17,9 @@
 #include <regex>
 #include <unistd.h>
 
+#define SEED 42
+#define SALT "pc"
+
 using namespace passwordcracker;
 
 void
@@ -34,16 +37,16 @@ void
 FilterPasswords(const std::string& filePath)
 {
     std::ifstream infile(filePath);
-    std::string password;
-    std::regex filterRegex(R"(^[a-zA-Z0-9./]{8}$)");
-
-    std::vector<std::string> validPasswords;
 
     if (!infile.is_open())
     {
         std::cerr << "Error opening file" << std::endl;
         return;
     }
+
+    std::string password;
+    std::regex filterRegex(R"(^[a-zA-Z0-9./]{8}$)");
+    std::vector<std::string> validPasswords;
 
     while (std::getline(infile, password))
     {
@@ -151,8 +154,7 @@ main(int argc, char** argv)
     }
 
     std::vector<std::string> passwords = sequentialDecryptor->GetPasswords();
-    int seed = 42;
-    std::mt19937 gen(seed);
+    std::mt19937 gen(SEED);
     std::uniform_int_distribution<> dis(0, passwords.size() - 1);
     std::vector<std::string> randomPasswords;
     randomPasswords.reserve(numExecutions.value());
@@ -161,14 +163,12 @@ main(int argc, char** argv)
         randomPasswords.push_back(passwords[dis(gen)]);
     }
 
-    std::string salt = "pc";
-
     std::vector<std::string> encryptedRandomPasswords;
     encryptedRandomPasswords.reserve(numExecutions.value());
 
     for (int i = 0; i < numExecutions; ++i)
     {
-        encryptedRandomPasswords.push_back(crypt(randomPasswords[i].c_str(), salt.c_str()));
+        encryptedRandomPasswords.push_back(crypt(randomPasswords[i].c_str(), SALT));
     }
 
     int numThreads[] = {0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64};

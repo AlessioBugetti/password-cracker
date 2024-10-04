@@ -4,18 +4,18 @@
  * Author: Alessio Bugetti <alessiobugetti98@gmail.com>
  */
 
-#ifndef PARALLEL_OPENMP_DECRYPTOR_H
-#define PARALLEL_OPENMP_DECRYPTOR_H
+#ifndef PARALLEL_OMP_DECRYPTOR_H
+#define PARALLEL_OMP_DECRYPTOR_H
 
-#include "decryptor.h"
+#include "parallel-decryptor.h"
 
 namespace passwordcracker
 {
 
 /**
- * @brief Decryptor strategy using OpenMP for parallel processing.
+ * @brief Decryptor using OpenMP for parallel processing.
  */
-class ParallelOmpDecryptor : public Decryptor
+class ParallelOmpDecryptor : public ParallelDecryptor
 {
   public:
     /**
@@ -51,18 +51,6 @@ class ParallelOmpDecryptor : public Decryptor
     ~ParallelOmpDecryptor() override = default;
 
     /**
-     * @brief Gets the number of threads.
-     * @return Number of threads
-     */
-    int GetNumThreads() const;
-
-    /**
-     * @brief Sets the number of threads.
-     * @param numThreads Number of threads to use for decryption
-     */
-    void SetNumThreads(int numThreads);
-
-    /**
      * @brief Decrypts an encrypted password using parallel processing.
      *
      * This function utilizes the `crypt_r` function from the `<crypt.h>`
@@ -75,11 +63,8 @@ class ParallelOmpDecryptor : public Decryptor
      */
     std::tuple<bool, std::string, double> Decrypt(
         const std::string& encryptedPassword) const override;
-
-  private:
-    int numThreads; ///< Number of threads to use for decryption.
 };
 
 } // namespace passwordcracker
 
-#endif // PARALLEL_OPENMP_DECRYPTOR_H
+#endif // PARALLEL_OMP_DECRYPTOR_H

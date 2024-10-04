@@ -18,62 +18,51 @@ namespace passwordcracker
 {
 
 ParallelOmpDecryptor::ParallelOmpDecryptor()
-    : numThreads(omp_get_max_threads())
+    : ParallelDecryptor(omp_get_max_threads())
 {
 }
 
 ParallelOmpDecryptor::ParallelOmpDecryptor(int numThreads)
-    : numThreads(numThreads)
+    : ParallelDecryptor(numThreads)
 {
 }
 
 ParallelOmpDecryptor::ParallelOmpDecryptor(std::vector<std::string> passwords)
-    : Decryptor(passwords),
-      numThreads(omp_get_max_threads())
+    : ParallelDecryptor(omp_get_max_threads(), passwords)
 {
 }
 
 ParallelOmpDecryptor::ParallelOmpDecryptor(int numThreads, std::vector<std::string> passwords)
-    : Decryptor(passwords),
-      numThreads(numThreads)
+    : ParallelDecryptor(numThreads, passwords)
 {
-}
-
-int
-ParallelOmpDecryptor::GetNumThreads() const
-{
-    return numThreads;
-}
-
-void
-ParallelOmpDecryptor::SetNumThreads(int numThreads)
-{
-    this->numThreads = numThreads;
 }
 
 std::tuple<bool, std::string, double>
 ParallelOmpDecryptor::Decrypt(const std::string& encryptedPassword) const
 {
-    std::string salt = encryptedPassword.substr(0, 2);
     const std::vector<std::string>& passwords = GetPasswords();
-    int numPasswords = passwords.size();
 
-    omp_set_num_threads(numThreads);
+    omp_set_num_threads(GetNumThreads());
     omp_set_dynamic(0);
 
     int index = -1;
 
     double startTime = omp_get_wtime();
 
-#pragma omp parallel default(none) shared(index, passwords, encryptedPassword, salt, numPasswords)
+#pragma omp parallel default(none) shared(index, passwords, encryptedPassword)
     {
+        int numPasswords = passwords.size();
+        std::string salt = encryptedPassword.substr(0, 2);
+
 #ifdef __linux__
         struct crypt_data data;
         data.initialized = 0;
 #else
         char data[14] = {0};
 #endif
+
         int tmp_index;
+
 #pragma omp for
         for (int i = 0; i < numPasswords; ++i)
         {
