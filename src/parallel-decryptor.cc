@@ -6,11 +6,24 @@
 
 #include "parallel-decryptor.h"
 
+#include <thread>
+
 namespace passwordcracker
 {
 
+ParallelDecryptor::ParallelDecryptor()
+    : numThreads(std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() : 1)
+{
+}
+
 ParallelDecryptor::ParallelDecryptor(int numThreads)
     : numThreads(numThreads)
+{
+}
+
+ParallelDecryptor::ParallelDecryptor(std::vector<std::string> passwords)
+    : Decryptor(passwords),
+      numThreads(std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() : 1)
 {
 }
 

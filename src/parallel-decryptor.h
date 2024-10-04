@@ -21,13 +21,19 @@ class ParallelDecryptor : public Decryptor
     /**
      * @brief Default constructor.
      */
-    ParallelDecryptor() = default;
+    ParallelDecryptor();
 
     /**
      * @brief Constructor with a specified number of threads.
      * @param numThreads Number of threads to use for decryption
      */
     ParallelDecryptor(int numThreads);
+
+    /**
+     * @brief Constructor with a list of passwords.
+     * @param passwords List of passwords to use for decryption
+     */
+    ParallelDecryptor(std::vector<std::string> passwords);
 
     /**
      * @brief Constructor with a specified number of threads and a list of passwords.

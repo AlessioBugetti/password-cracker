@@ -18,7 +18,7 @@ namespace passwordcracker
 {
 
 ParallelOmpDecryptor::ParallelOmpDecryptor()
-    : ParallelDecryptor(omp_get_max_threads())
+    : ParallelDecryptor()
 {
 }
 
@@ -28,7 +28,7 @@ ParallelOmpDecryptor::ParallelOmpDecryptor(int numThreads)
 }
 
 ParallelOmpDecryptor::ParallelOmpDecryptor(std::vector<std::string> passwords)
-    : ParallelDecryptor(omp_get_max_threads(), passwords)
+    : ParallelDecryptor(passwords)
 {
 }
 
