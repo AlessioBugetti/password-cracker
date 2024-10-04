@@ -4,35 +4,35 @@
  * Author: Alessio Bugetti <alessiobugetti98@gmail.com>
  */
 
-#ifndef SEQUENTIAL_DECRYPTION_H
-#define SEQUENTIAL_DECRYPTION_H
+#ifndef SEQUENTIAL_DECRYPTOR_H
+#define SEQUENTIAL_DECRYPTOR_H
 
-#include "decryption-strategy.h"
+#include "decryptor.h"
 
 namespace passwordcracker
 {
 
 /**
- * @brief Decryption strategy using sequential processing.
+ * @brief Decryptor using sequential processing.
  */
-class SequentialDecryption : public DecryptionStrategy
+class SequentialDecryptor : public Decryptor
 {
   public:
     /**
      * @brief Default constructor.
      */
-    SequentialDecryption() = default;
+    SequentialDecryptor() = default;
 
     /**
      * @brief Constructor with a list of passwords.
      * @param passwords List of passwords to use for decryption
      */
-    SequentialDecryption(std::vector<std::string> passwords);
+    SequentialDecryptor(std::vector<std::string> passwords);
 
     /**
      * @brief Destructor.
      */
-    ~SequentialDecryption() override = default;
+    ~SequentialDecryptor() override = default;
 
     /**
      * @brief Decrypts an encrypted password using sequential processing.
@@ -51,4 +51,4 @@ class SequentialDecryption : public DecryptionStrategy
 
 } // namespace passwordcracker
 
-#endif // SEQUENTIAL_DECRYPTION_H
+#endif // SEQUENTIAL_DECRYPTOR_H

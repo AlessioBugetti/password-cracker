@@ -4,7 +4,7 @@
  * Author: Alessio Bugetti <alessiobugetti98@gmail.com>
  */
 
-#include "sequential-decryption.h"
+#include "sequential-decryptor.h"
 
 #ifdef __linux__
 #include <crypt.h>
@@ -17,13 +17,13 @@
 namespace passwordcracker
 {
 
-SequentialDecryption::SequentialDecryption(std::vector<std::string> passwords)
-    : DecryptionStrategy(passwords)
+SequentialDecryptor::SequentialDecryptor(std::vector<std::string> passwords)
+    : Decryptor(passwords)
 {
 }
 
 std::tuple<bool, std::string, double>
-SequentialDecryption::Decrypt(const std::string& encryptedPassword) const
+SequentialDecryptor::Decrypt(const std::string& encryptedPassword) const
 {
     const std::vector<std::string>& passwords = GetPasswords();
     std::string salt = encryptedPassword.substr(0, 2);

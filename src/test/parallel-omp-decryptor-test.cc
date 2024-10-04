@@ -4,19 +4,19 @@
  * Author: Alessio Bugetti <alessiobugetti98@gmail.com>
  */
 
-#include "parallel-omp-decryption.h"
+#include "parallel-omp-decryptor.h"
 #include <gtest/gtest.h>
+#include <memory>
 #include <unistd.h>
 
 using namespace passwordcracker;
 
-TEST(ParallelOmpDecryptionTest, DecryptSuccess)
+TEST(ParallelOmpDecryptorTest, DecryptSuccess)
 {
-    int numThreads = 8;
     std::vector<std::string> passwords = {"acqua", "vento", "aria", "fuoco"};
     std::string password = "vento";
     std::string salt = "pc";
-    auto decryptor = std::make_unique<ParallelOmpDecryption>(numThreads, passwords);
+    auto decryptor = std::make_unique<ParallelOmpDecryptor>(passwords);
 
     std::string encryptedPassword = crypt(password.c_str(), salt.c_str());
     auto [found, decryptedPassword, time] = decryptor->Decrypt(encryptedPassword);
@@ -25,13 +25,12 @@ TEST(ParallelOmpDecryptionTest, DecryptSuccess)
     EXPECT_EQ(decryptedPassword, password);
 }
 
-TEST(ParallelOmpDecryptionTest, DecryptFailure)
+TEST(ParallelOmpDecryptorTest, DecryptFailure)
 {
-    int numThreads = 8;
     std::vector<std::string> passwords = {"acqua", "vento", "aria", "fuoco"};
     std::string password = "terra";
     std::string salt = "pc";
-    auto decryptor = std::make_unique<ParallelOmpDecryption>(numThreads, passwords);
+    auto decryptor = std::make_unique<ParallelOmpDecryptor>(passwords);
 
     std::string encryptedPassword = crypt(password.c_str(), salt.c_str());
     auto [found, decryptedPassword, time] = decryptor->Decrypt(encryptedPassword);

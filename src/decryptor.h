@@ -4,8 +4,8 @@
  * Author: Alessio Bugetti <alessiobugetti98@gmail.com>
  */
 
-#ifndef DECRYPTION_STRATEGY_H
-#define DECRYPTION_STRATEGY_H
+#ifndef DECRYPTOR_H
+#define DECRYPTOR_H
 
 #include <string>
 #include <vector>
@@ -18,24 +18,24 @@ namespace passwordcracker
  *
  * This class provides the interface for different decryption strategies.
  */
-class DecryptionStrategy
+class Decryptor
 {
   public:
     /**
      * @brief Default constructor.
      */
-    DecryptionStrategy() = default;
+    Decryptor() = default;
 
     /**
      * @brief Constructor with a list of passwords.
      * @param passwords List of passwords to use for decryption
      */
-    DecryptionStrategy(std::vector<std::string> passwords);
+    Decryptor(std::vector<std::string> passwords);
 
     /**
      * @brief Virtual destructor.
      */
-    virtual ~DecryptionStrategy() = default;
+    virtual ~Decryptor() = default;
 
     /**
      * @brief Gets the list of passwords.
@@ -64,4 +64,4 @@ class DecryptionStrategy
 
 } // namespace passwordcracker
 
-#endif // DECRYPTION_STRATEGY_H
+#endif // DECRYPTOR_H

@@ -7,7 +7,7 @@
  *
  * @section class Class overview
  * The following classes are implemented:
- * - @ref passwordcracker::DecryptionStrategy "DecryptionStrategy"
- * - @ref passwordcracker::SequentialDecryption "SequentialDecryption"
- * - @ref passwordcracker::ParallelOmpDecryption "ParallelOmpDecryption"
+ * - @ref passwordcracker::Decryptor "Decryptor"
+ * - @ref passwordcracker::SequentialDecryptor "SequentialDecryptor"
+ * - @ref passwordcracker::ParallelOmpDecryptor "ParallelOmpDecryptor"
  */

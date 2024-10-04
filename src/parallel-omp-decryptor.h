@@ -4,18 +4,18 @@
  * Author: Alessio Bugetti <alessiobugetti98@gmail.com>
  */
 
-#ifndef PARALLEL_OPENMP_DECRYPTION_H
-#define PARALLEL_OPENMP_DECRYPTION_H
+#ifndef PARALLEL_OPENMP_DECRYPTOR_H
+#define PARALLEL_OPENMP_DECRYPTOR_H
 
-#include "decryption-strategy.h"
+#include "decryptor.h"
 
 namespace passwordcracker
 {
 
 /**
- * @brief Decryption strategy using OpenMP for parallel processing.
+ * @brief Decryptor strategy using OpenMP for parallel processing.
  */
-class ParallelOmpDecryption : public DecryptionStrategy
+class ParallelOmpDecryptor : public Decryptor
 {
   public:
     /**
@@ -24,31 +24,31 @@ class ParallelOmpDecryption : public DecryptionStrategy
      * Sets the number of threads to the value returned by the ‘omp_get_max_threads()’ function from
      * the `<omp.h>` header.
      */
-    ParallelOmpDecryption();
+    ParallelOmpDecryptor();
 
     /**
      * @brief Constructor with a specified number of threads.
      * @param numThreads Number of threads to use for decryption
      */
-    ParallelOmpDecryption(int numThreads);
+    ParallelOmpDecryptor(int numThreads);
 
     /**
      * @brief Constructor with a list of passwords.
      * @param passwords List of passwords to use for decryption
      */
-    ParallelOmpDecryption(std::vector<std::string> passwords);
+    ParallelOmpDecryptor(std::vector<std::string> passwords);
 
     /**
      * @brief Constructor with a specified number of threads and a list of passwords.
      * @param numThreads Number of threads to use for decryption
      * @param passwords List of passwords to use for decryption
      */
-    ParallelOmpDecryption(int numThreads, std::vector<std::string> passwords);
+    ParallelOmpDecryptor(int numThreads, std::vector<std::string> passwords);
 
     /**
      * @brief Destructor.
      */
-    ~ParallelOmpDecryption() override = default;
+    ~ParallelOmpDecryptor() override = default;
 
     /**
      * @brief Gets the number of threads.
@@ -82,4 +82,4 @@ class ParallelOmpDecryption : public DecryptionStrategy
 
 } // namespace passwordcracker
 
-#endif // PARALLEL_OPENMP_DECRYPTION_H
+#endif // PARALLEL_OPENMP_DECRYPTOR_H

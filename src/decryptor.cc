@@ -4,26 +4,26 @@
  * Author: Alessio Bugetti <alessiobugetti98@gmail.com>
  */
 
-#include "decryption-strategy.h"
+#include "decryptor.h"
 
 #include <fstream>
 
 namespace passwordcracker
 {
 
-DecryptionStrategy::DecryptionStrategy(std::vector<std::string> passwords)
+Decryptor::Decryptor(std::vector<std::string> passwords)
     : passwords(passwords)
 {
 }
 
 std::vector<std::string>
-DecryptionStrategy::GetPasswords() const
+Decryptor::GetPasswords() const
 {
     return passwords;
 }
 
 void
-DecryptionStrategy::LoadPasswords(const std::string& filepath)
+Decryptor::LoadPasswords(const std::string& filepath)
 {
     std::ifstream file(filepath);
     if (!file.is_open())

@@ -4,9 +4,8 @@
  * Author: Alessio Bugetti <alessiobugetti98@gmail.com>
  */
 
-#include "parallel-omp-decryption.h"
-#include "sequential-decryption.h"
-
+#include "parallel-omp-decryptor.h"
+#include "sequential-decryptor.h"
 #include <fstream>
 #include <getopt.h>
 #include <iomanip>
@@ -138,20 +137,20 @@ main(int argc, char** argv)
 
     FilterPasswords(extractedFile);
 
-    auto sequentialDecryption = std::make_unique<SequentialDecryption>();
-    auto parallelDecryption = std::make_unique<ParallelOmpDecryption>();
+    auto sequentialDecryptor = std::make_unique<SequentialDecryptor>();
+    auto parallelDecryptor = std::make_unique<ParallelOmpDecryptor>();
 
-    sequentialDecryption->LoadPasswords(extractedFile);
-    parallelDecryption->LoadPasswords(extractedFile);
+    sequentialDecryptor->LoadPasswords(extractedFile);
+    parallelDecryptor->LoadPasswords(extractedFile);
 
-    if (sequentialDecryption->GetPasswords().size() != parallelDecryption->GetPasswords().size())
+    if (sequentialDecryptor->GetPasswords().size() != parallelDecryptor->GetPasswords().size())
     {
         std::cerr << "Error: Passwords loaded by sequential and parallel decryption are different"
                   << std::endl;
         return 1;
     }
 
-    std::vector<std::string> passwords = sequentialDecryption->GetPasswords();
+    std::vector<std::string> passwords = sequentialDecryptor->GetPasswords();
     int seed = 42;
     std::mt19937 gen(seed);
     std::uniform_int_distribution<> dis(0, passwords.size() - 1);
@@ -190,7 +189,7 @@ main(int argc, char** argv)
     for (int i = 0; i < numExecutions; ++i)
     {
         auto [foundSeq, decryptedPasswordSeq, timeSeq] =
-            sequentialDecryption->Decrypt(encryptedRandomPasswords[i]);
+            sequentialDecryptor->Decrypt(encryptedRandomPasswords[i]);
         if (foundSeq)
         {
             if (timeSeq < minTimeSeq)
@@ -206,9 +205,9 @@ main(int argc, char** argv)
 
         for (const int& numThread : numThreads)
         {
-            parallelDecryption->SetNumThreads(numThread);
+            parallelDecryptor->SetNumThreads(numThread);
             auto [foundPar, decryptedPasswordPar, timePar] =
-                parallelDecryption->Decrypt(encryptedRandomPasswords[i]);
+                parallelDecryptor->Decrypt(encryptedRandomPasswords[i]);
             if (foundPar)
             {
                 ParallelStats& parStats = parallelStatsMap[numThread];

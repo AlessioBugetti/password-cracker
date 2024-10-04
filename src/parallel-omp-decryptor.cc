@@ -4,7 +4,7 @@
  * Author: Alessio Bugetti <alessiobugetti98@gmail.com>
  */
 
-#include "parallel-omp-decryption.h"
+#include "parallel-omp-decryptor.h"
 
 #ifdef __linux__
 #include <crypt.h>
@@ -17,42 +17,42 @@
 namespace passwordcracker
 {
 
-ParallelOmpDecryption::ParallelOmpDecryption()
+ParallelOmpDecryptor::ParallelOmpDecryptor()
     : numThreads(omp_get_max_threads())
 {
 }
 
-ParallelOmpDecryption::ParallelOmpDecryption(int numThreads)
+ParallelOmpDecryptor::ParallelOmpDecryptor(int numThreads)
     : numThreads(numThreads)
 {
 }
 
-ParallelOmpDecryption::ParallelOmpDecryption(std::vector<std::string> passwords)
-    : DecryptionStrategy(passwords),
+ParallelOmpDecryptor::ParallelOmpDecryptor(std::vector<std::string> passwords)
+    : Decryptor(passwords),
       numThreads(omp_get_max_threads())
 {
 }
 
-ParallelOmpDecryption::ParallelOmpDecryption(int numThreads, std::vector<std::string> passwords)
-    : DecryptionStrategy(passwords),
+ParallelOmpDecryptor::ParallelOmpDecryptor(int numThreads, std::vector<std::string> passwords)
+    : Decryptor(passwords),
       numThreads(numThreads)
 {
 }
 
 int
-ParallelOmpDecryption::GetNumThreads() const
+ParallelOmpDecryptor::GetNumThreads() const
 {
     return numThreads;
 }
 
 void
-ParallelOmpDecryption::SetNumThreads(int numThreads)
+ParallelOmpDecryptor::SetNumThreads(int numThreads)
 {
     this->numThreads = numThreads;
 }
 
 std::tuple<bool, std::string, double>
-ParallelOmpDecryption::Decrypt(const std::string& encryptedPassword) const
+ParallelOmpDecryptor::Decrypt(const std::string& encryptedPassword) const
 {
     std::string salt = encryptedPassword.substr(0, 2);
     const std::vector<std::string>& passwords = GetPasswords();
