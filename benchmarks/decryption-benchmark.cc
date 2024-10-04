@@ -6,11 +6,13 @@
 
 #include "parallel-omp-decryption.h"
 #include "sequential-decryption.h"
+
 #include <fstream>
 #include <getopt.h>
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <optional>
 #include <random>
 #include <regex>
