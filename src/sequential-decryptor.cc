@@ -50,7 +50,7 @@ SequentialDecryptor::Decrypt(const std::string& encryptedPassword) const
         }
     }
     auto endTime = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = endTime - startTime;
+    std::chrono::duration<double, std::milli> duration = endTime - startTime;
     return {found, decryptedPassword, duration.count()};
 }
 

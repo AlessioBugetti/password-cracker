@@ -95,7 +95,7 @@ ParallelOmpDecryptor::Decrypt(const std::string& encryptedPassword) const
     }
     else
     {
-        return {true, passwords[index], endTime - startTime};
+        return {true, passwords[index], (endTime - startTime) * 1000};
     }
 }
 

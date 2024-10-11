@@ -116,7 +116,7 @@ ParallelPThreadDecryptor::Decrypt(const std::string& encryptedPassword) const
         pthread_join(thread, nullptr);
     }
     auto endTime = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = endTime - startTime;
+    std::chrono::duration<double, std::milli> duration = endTime - startTime;
 
     if (index.load() != -1)
     {
