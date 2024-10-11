@@ -9,16 +9,17 @@
 #include <memory>
 #include <unistd.h>
 
+#define SALT "pc"
+
 using namespace passwordcracker;
 
 TEST(ParallelPthreadDecryptorTest, DecryptSuccess)
 {
     std::vector<std::string> passwords = {"acqua", "vento", "aria", "fuoco"};
     std::string password = "vento";
-    std::string salt = "pc";
     auto decryptor = std::make_unique<ParallelPThreadDecryptor>(passwords);
 
-    std::string encryptedPassword = crypt(password.c_str(), salt.c_str());
+    std::string encryptedPassword = crypt(password.c_str(), SALT);
     auto [found, decryptedPassword, time] = decryptor->Decrypt(encryptedPassword);
 
     EXPECT_TRUE(found);
@@ -29,10 +30,9 @@ TEST(ParallelPthreadDecryptorTest, DecryptFailure)
 {
     std::vector<std::string> passwords = {"acqua", "vento", "aria", "fuoco"};
     std::string password = "terra";
-    std::string salt = "pc";
     auto decryptor = std::make_unique<ParallelPThreadDecryptor>(passwords);
 
-    std::string encryptedPassword = crypt(password.c_str(), salt.c_str());
+    std::string encryptedPassword = crypt(password.c_str(), SALT);
     auto [found, decryptedPassword, time] = decryptor->Decrypt(encryptedPassword);
 
     EXPECT_FALSE(found);
