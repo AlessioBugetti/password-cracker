@@ -41,49 +41,40 @@ std::tuple<bool, std::string, double>
 ParallelOmpDecryptor::Decrypt(const std::string& encryptedPassword) const
 {
     const std::vector<std::string>& passwords = GetPasswords();
+    int numPasswords = passwords.size();
+    std::string salt = encryptedPassword.substr(0, 2);
 
-    omp_set_num_threads(GetNumThreads());
-    omp_set_dynamic(0);
+#ifdef __linux__
+    struct crypt_data data;
+    data.initialized = 0;
+#else
+    char data[14] = {0};
+#endif
 
     int index = -1;
 
+    int numThreads = GetNumThreads();
+
     double startTime = omp_get_wtime();
 
-#pragma omp parallel default(none) shared(index, passwords, encryptedPassword)
+#pragma omp parallel for default(none) shared(index, passwords)                                    \
+    firstprivate(encryptedPassword, numPasswords, salt, data) num_threads(numThreads)
+    for (int i = 0; i < numPasswords; ++i)
     {
-        int numPasswords = passwords.size();
-        std::string salt = encryptedPassword.substr(0, 2);
+#pragma omp cancellation point for
 
 #ifdef __linux__
-        struct crypt_data data;
-        data.initialized = 0;
+        std::string encryptedTmpPassword = crypt_r(passwords[i].c_str(), salt.c_str(), &data);
 #else
-        char data[14] = {0};
+        DES_fcrypt(passwords[i].c_str(), salt.c_str(), data);
+        std::string encryptedTmpPassword(data);
 #endif
 
-        int tmp_index;
-
-#pragma omp for
-        for (int i = 0; i < numPasswords; ++i)
+        if (encryptedTmpPassword == encryptedPassword)
         {
-#pragma omp atomic read acquire
-            tmp_index = index;
-            if (tmp_index == -1)
-            {
-#ifdef __linux__
-                std::string encryptedTmpPassword =
-                    crypt_r(passwords[i].c_str(), salt.c_str(), &data);
-#else
-                DES_fcrypt(passwords[i].c_str(), salt.c_str(), data);
-                std::string encryptedTmpPassword(data);
-#endif
-
-                if (encryptedTmpPassword == encryptedPassword)
-                {
 #pragma omp atomic write release
-                    index = i;
-                }
-            }
+            index = i;
+#pragma omp cancel for
         }
     }
 
