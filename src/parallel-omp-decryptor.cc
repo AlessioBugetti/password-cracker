@@ -57,24 +57,27 @@ ParallelOmpDecryptor::Decrypt(const std::string& encryptedPassword) const
 
     double startTime = omp_get_wtime();
 
-#pragma omp parallel for default(none) shared(index, passwords)                                    \
+#pragma omp parallel default(none) shared(index, passwords)                                        \
     firstprivate(encryptedPassword, numPasswords, salt, data) num_threads(numThreads)
-    for (int i = 0; i < numPasswords; ++i)
     {
+#pragma omp for
+        for (int i = 0; i < numPasswords; ++i)
+        {
 #pragma omp cancellation point for
 
 #ifdef __linux__
-        std::string encryptedTmpPassword = crypt_r(passwords[i].c_str(), salt.c_str(), &data);
+            std::string encryptedTmpPassword = crypt_r(passwords[i].c_str(), salt.c_str(), &data);
 #else
-        DES_fcrypt(passwords[i].c_str(), salt.c_str(), data);
-        std::string encryptedTmpPassword(data);
+            DES_fcrypt(passwords[i].c_str(), salt.c_str(), data);
+            std::string encryptedTmpPassword(data);
 #endif
 
-        if (encryptedTmpPassword == encryptedPassword)
-        {
-#pragma omp atomic write release
-            index = i;
+            if (encryptedTmpPassword == encryptedPassword)
+            {
+#pragma omp atomic write
+                index = i;
 #pragma omp cancel for
+            }
         }
     }
 

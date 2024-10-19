@@ -13,6 +13,8 @@
 #include <openssl/des.h>
 #endif
 #include <pthread.h>
+#include <chrono>
+#include <atomic>
 
 namespace passwordcracker
 {

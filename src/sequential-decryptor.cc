@@ -12,6 +12,7 @@
 #define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/des.h>
 #endif
+#include <chrono>
 
 namespace passwordcracker
 {
