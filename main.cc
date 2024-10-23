@@ -8,6 +8,7 @@
 #include "sequential-decryptor.h"
 #include <iostream>
 #include <memory>
+#include <omp.h>
 #include <parallel-pthread-decryptor.h>
 #include <unistd.h>
 
@@ -24,8 +25,10 @@ main(int argc, char** argv)
     auto decryptionStrategy = std::make_unique<ParallelPThreadDecryptor>(4);
     decryptionStrategy->LoadPasswords(inputFile);
     std::string encryptedPassword = crypt(password.c_str(), salt.c_str());
-    auto [decrypted, decryptedPassword, time] = decryptionStrategy->Decrypt(encryptedPassword);
-    std::cout << "Time: " << time << " ms" << std::endl;
+    double startTime = omp_get_wtime();
+    auto [decrypted, decryptedPassword] = decryptionStrategy->Decrypt(encryptedPassword);
+    double endTime = omp_get_wtime();
+    std::cout << "Time: " << (endTime - startTime) * 1000 << " ms" << std::endl;
     std::cout << "Decrypted password: " << decryptedPassword << std::endl;
     return 0;
 }

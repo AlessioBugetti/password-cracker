@@ -42,11 +42,10 @@ class SequentialDecryptor : public Decryptor
      * decrypt the provided encrypted password.
      *
      * @param encryptedPassword The encrypted password to decrypt
-     * @return A tuple containing a boolean indicating success, the decrypted password, and the time
-     * taken in milliseconds
+     * @return A tuple containing a boolean indicating success and the decrypted password if the
+     * boolean is true, otherwise an empty string
      */
-    std::tuple<bool, std::string, double> Decrypt(
-        const std::string& encryptedPassword) const override;
+    std::tuple<bool, std::string> Decrypt(const std::string& encryptedPassword) const override;
 };
 
 } // namespace passwordcracker

@@ -12,7 +12,6 @@
 #define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/des.h>
 #endif
-#include <omp.h>
 
 namespace passwordcracker
 {
@@ -37,7 +36,7 @@ ParallelOmpDecryptor::ParallelOmpDecryptor(int numThreads, std::vector<std::stri
 {
 }
 
-std::tuple<bool, std::string, double>
+std::tuple<bool, std::string>
 ParallelOmpDecryptor::Decrypt(const std::string& encryptedPassword) const
 {
     const std::vector<std::string>& passwords = GetPasswords();
@@ -47,8 +46,6 @@ ParallelOmpDecryptor::Decrypt(const std::string& encryptedPassword) const
     int index = -1;
 
     int numThreads = GetNumThreads();
-
-    double startTime = omp_get_wtime();
 
 #pragma omp parallel default(none) shared(index, passwords)                                        \
     firstprivate(encryptedPassword, numPasswords, salt) num_threads(numThreads)
@@ -80,15 +77,13 @@ ParallelOmpDecryptor::Decrypt(const std::string& encryptedPassword) const
         }
     }
 
-    double endTime = omp_get_wtime();
-
     if (index == -1)
     {
-        return {false, "", (endTime - startTime) * 1000};
+        return {false, ""};
     }
     else
     {
-        return {true, passwords[index], (endTime - startTime) * 1000};
+        return {true, passwords[index]};
     }
 }
 

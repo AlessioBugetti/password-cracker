@@ -12,7 +12,6 @@
 #define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/des.h>
 #endif
-#include <omp.h>
 
 namespace passwordcracker
 {
@@ -22,7 +21,7 @@ SequentialDecryptor::SequentialDecryptor(std::vector<std::string> passwords)
 {
 }
 
-std::tuple<bool, std::string, double>
+std::tuple<bool, std::string>
 SequentialDecryptor::Decrypt(const std::string& encryptedPassword) const
 {
     const std::vector<std::string>& passwords = GetPasswords();
@@ -36,7 +35,6 @@ SequentialDecryptor::Decrypt(const std::string& encryptedPassword) const
     char data[14] = {0};
 #endif
 
-    double startTime = omp_get_wtime();
     for (int index = 0; index < numPasswords; index++)
     {
 #ifdef __linux__
@@ -46,10 +44,10 @@ SequentialDecryptor::Decrypt(const std::string& encryptedPassword) const
 #endif
         if (encryptedTmpPassword == encryptedPassword)
         {
-            return {true, passwords[index], (omp_get_wtime() - startTime) * 1000};
+            return {true, passwords[index]};
         }
     }
-    return {false, "", (omp_get_wtime() - startTime) * 1000};
+    return {false, ""};
 }
 
 } // namespace passwordcracker

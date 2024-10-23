@@ -13,7 +13,6 @@
 #include <openssl/des.h>
 #endif
 #include <atomic>
-#include <omp.h>
 #include <pthread.h>
 
 namespace passwordcracker
@@ -88,7 +87,7 @@ ParallelPThreadDecryptor::DecryptThread(void* arg)
     return nullptr;
 }
 
-std::tuple<bool, std::string, double>
+std::tuple<bool, std::string>
 ParallelPThreadDecryptor::Decrypt(const std::string& encryptedPassword) const
 {
     std::atomic<int> index(-1);
@@ -102,7 +101,6 @@ ParallelPThreadDecryptor::Decrypt(const std::string& encryptedPassword) const
     int chunkSize = passwords.size() / numThreads;
     int remaining = passwords.size() % numThreads;
 
-    double startTime = omp_get_wtime();
     for (int i = 0; i < numThreads; i++)
     {
         int startIndex = i * chunkSize;
@@ -117,15 +115,14 @@ ParallelPThreadDecryptor::Decrypt(const std::string& encryptedPassword) const
     {
         pthread_join(thread, nullptr);
     }
-    double endTime = omp_get_wtime();
 
     if (index.load() != -1)
     {
-        return {true, passwords[index.load()], (endTime - startTime) * 1000};
+        return {true, passwords[index.load()]};
     }
     else
     {
-        return {false, "", (endTime - startTime) * 1000};
+        return {false, ""};
     }
 }
 

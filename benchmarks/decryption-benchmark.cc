@@ -7,12 +7,15 @@
 #include "parallel-omp-decryptor.h"
 #include "parallel-pthread-decryptor.h"
 #include "sequential-decryptor.h"
+
 #include <fstream>
 #include <getopt.h>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <memory>
+#include <omp.h>
 #include <optional>
 #include <regex>
 #include <unistd.h>
@@ -80,6 +83,7 @@ FilterPasswords(const std::string& filePath)
 int
 main(int argc, char** argv)
 {
+    int numThreads[] = {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64};
     std::optional<int> numExecutions;
 
     struct option longOptions[] = {{"numExecutions", required_argument, nullptr, 'e'},
@@ -188,7 +192,7 @@ main(int argc, char** argv)
 
     if (allPasswords.size() > 1024)
     {
-        // passwords.push_back(allPasswords[1024]);
+        passwords.push_back(allPasswords[1024]);
     }
     if (allPasswords.size() > 1414582)
     {
@@ -196,7 +200,7 @@ main(int argc, char** argv)
     }
     if (allPasswords.size() > 2829163)
     {
-        // passwords.push_back(allPasswords[2829163]);
+        passwords.push_back(allPasswords[2829163]);
     }
 
     std::vector<std::string> encryptedPasswords;
@@ -207,7 +211,13 @@ main(int argc, char** argv)
         encryptedPasswords.push_back(crypt(passwords[i].c_str(), SALT));
     }
 
-    int numThreads[] = {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64};
+    double startTimeSeq;
+    double endTimeSeq;
+    double timeSeq;
+    double minTimeSeq = std::numeric_limits<double>::max();
+    double maxTimeSeq = std::numeric_limits<double>::min();
+    double totalTimeSeq = 0.0;
+    double avgTimeSeq;
 
     struct ParallelStats
     {
@@ -216,12 +226,19 @@ main(int argc, char** argv)
         double totalTimePar = 0.0;
     };
 
+    double startTimePThreadPar;
+    double endTimePThreadPar;
+    double timePThreadPar;
     std::map<int, ParallelStats> parallelPThreadStatsMap;
-    std::map<int, ParallelStats> parallelOmpStatsMap;
+    double avgTimePThreadPar;
+    double pthreadSpeedup;
 
-    double minTimeSeq = std::numeric_limits<double>::max();
-    double maxTimeSeq = std::numeric_limits<double>::min();
-    double totalTimeSeq = 0.0;
+    double startTimeOmpPar;
+    double endTimeOmpPar;
+    double timeOmpPar;
+    std::map<int, ParallelStats> parallelOmpStatsMap;
+    double avgTimeOmpPar;
+    double ompSpeedup;
 
     for (int i = 0; i < encryptedPasswords.size(); i++)
     {
@@ -229,8 +246,11 @@ main(int argc, char** argv)
                   << std::endl;
         for (int j = 0; j < numExecutions; j++)
         {
-            auto [foundSeq, decryptedPasswordSeq, timeSeq] =
+            startTimeSeq = omp_get_wtime();
+            auto [foundSeq, decryptedPasswordSeq] =
                 sequentialDecryptor->Decrypt(encryptedPasswords[i]);
+            endTimeSeq = omp_get_wtime();
+            timeSeq = (endTimeSeq - startTimeSeq) * 1000;
             if (foundSeq)
             {
                 if (timeSeq < minTimeSeq)
@@ -253,8 +273,12 @@ main(int argc, char** argv)
 
             for (int j = 0; j < numExecutions; j++)
             {
-                auto [foundPThreadPar, decryptedPasswordPThreadPar, timePThreadPar] =
+                startTimePThreadPar = omp_get_wtime();
+                auto [foundPThreadPar, decryptedPasswordPThreadPar] =
                     parallelPThreadDecryptor->Decrypt(encryptedPasswords[i]);
+                endTimePThreadPar = omp_get_wtime();
+                timePThreadPar = (endTimePThreadPar - startTimePThreadPar) * 1000;
+
                 if (foundPThreadPar)
                 {
                     ParallelStats& parPThreadStats = parallelPThreadStatsMap[numThread];
@@ -270,8 +294,12 @@ main(int argc, char** argv)
                               << j + 1 << " with " << numThread << " threads" << std::endl;
                 }
 
-                auto [foundOmpPar, decryptedPasswordOmpPar, timeOmpPar] =
+                startTimeOmpPar = omp_get_wtime();
+                auto [foundOmpPar, decryptedPasswordOmpPar] =
                     parallelOmpDecryptor->Decrypt(encryptedPasswords[i]);
+                endTimeOmpPar = omp_get_wtime();
+                timeOmpPar = (endTimeOmpPar - startTimeOmpPar) * 1000;
+
                 if (foundOmpPar)
                 {
                     ParallelStats& parOmpStats = parallelOmpStatsMap[numThread];
@@ -289,7 +317,7 @@ main(int argc, char** argv)
             }
         }
 
-        double avgTimeSeq = totalTimeSeq / numExecutions.value();
+        avgTimeSeq = totalTimeSeq / numExecutions.value();
 
         std::cout << "Sequential Decryption:" << std::endl;
 
@@ -309,8 +337,8 @@ main(int argc, char** argv)
         {
             const ParallelStats& parOmpStats = parallelOmpStatsMap[numThread];
 
-            double avgTimeOmpPar = parOmpStats.totalTimePar / numExecutions.value();
-            double ompSpeedup = avgTimeSeq / avgTimeOmpPar;
+            avgTimeOmpPar = parOmpStats.totalTimePar / numExecutions.value();
+            ompSpeedup = avgTimeSeq / avgTimeOmpPar;
 
             std::cout << std::left << std::setw(12) << numThread << std::right << std::setw(20)
                       << parOmpStats.minTimePar << std::setw(20) << parOmpStats.maxTimePar
@@ -327,8 +355,8 @@ main(int argc, char** argv)
         {
             const ParallelStats& parPThreadStats = parallelPThreadStatsMap[numThread];
 
-            double avgTimePThreadPar = parPThreadStats.totalTimePar / numExecutions.value();
-            double pthreadSpeedup = avgTimeSeq / avgTimePThreadPar;
+            avgTimePThreadPar = parPThreadStats.totalTimePar / numExecutions.value();
+            pthreadSpeedup = avgTimeSeq / avgTimePThreadPar;
 
             std::cout << std::left << std::setw(12) << numThread << std::right << std::setw(20)
                       << parPThreadStats.minTimePar << std::setw(20) << parPThreadStats.maxTimePar

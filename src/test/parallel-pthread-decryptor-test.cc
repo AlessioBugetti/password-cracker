@@ -20,7 +20,7 @@ TEST(ParallelPthreadDecryptorTest, DecryptSuccess)
     auto decryptor = std::make_unique<ParallelPThreadDecryptor>(passwords);
 
     std::string encryptedPassword = crypt(password.c_str(), SALT);
-    auto [found, decryptedPassword, time] = decryptor->Decrypt(encryptedPassword);
+    auto [found, decryptedPassword] = decryptor->Decrypt(encryptedPassword);
 
     EXPECT_TRUE(found);
     EXPECT_EQ(decryptedPassword, password);
@@ -33,7 +33,7 @@ TEST(ParallelPthreadDecryptorTest, DecryptFailure)
     auto decryptor = std::make_unique<ParallelPThreadDecryptor>(passwords);
 
     std::string encryptedPassword = crypt(password.c_str(), SALT);
-    auto [found, decryptedPassword, time] = decryptor->Decrypt(encryptedPassword);
+    auto [found, decryptedPassword] = decryptor->Decrypt(encryptedPassword);
 
     EXPECT_FALSE(found);
     EXPECT_EQ(decryptedPassword, "");

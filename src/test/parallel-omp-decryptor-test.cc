@@ -20,7 +20,7 @@ TEST(ParallelOmpDecryptorTest, DecryptSuccess)
     auto decryptor = std::make_unique<ParallelOmpDecryptor>(passwords);
 
     std::string encryptedPassword = crypt(password.c_str(), SALT);
-    auto [found, decryptedPassword, time] = decryptor->Decrypt(encryptedPassword);
+    auto [found, decryptedPassword] = decryptor->Decrypt(encryptedPassword);
 
     EXPECT_TRUE(found);
     EXPECT_EQ(decryptedPassword, password);
@@ -33,7 +33,7 @@ TEST(ParallelOmpDecryptorTest, DecryptFailure)
     auto decryptor = std::make_unique<ParallelOmpDecryptor>(passwords);
 
     std::string encryptedPassword = crypt(password.c_str(), SALT);
-    auto [found, decryptedPassword, time] = decryptor->Decrypt(encryptedPassword);
+    auto [found, decryptedPassword] = decryptor->Decrypt(encryptedPassword);
 
     EXPECT_FALSE(found);
     EXPECT_EQ(decryptedPassword, "");
