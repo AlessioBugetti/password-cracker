@@ -12,9 +12,9 @@
 #define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/des.h>
 #endif
-#include <pthread.h>
-#include <chrono>
 #include <atomic>
+#include <omp.h>
+#include <pthread.h>
 
 namespace passwordcracker
 {
@@ -69,7 +69,7 @@ ParallelPThreadDecryptor::DecryptThread(void* arg)
 
     for (int i = threadData->startIndex;
          i < threadData->endIndex && threadData->index->load() == -1;
-         ++i)
+         i++)
     {
 #ifdef __linux__
         std::string encryptedTmpPassword =
@@ -102,8 +102,8 @@ ParallelPThreadDecryptor::Decrypt(const std::string& encryptedPassword) const
     int chunkSize = passwords.size() / numThreads;
     int remaining = passwords.size() % numThreads;
 
-    auto startTime = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < numThreads; ++i)
+    double startTime = omp_get_wtime();
+    for (int i = 0; i < numThreads; i++)
     {
         int startIndex = i * chunkSize;
         int endIndex =
@@ -117,16 +117,15 @@ ParallelPThreadDecryptor::Decrypt(const std::string& encryptedPassword) const
     {
         pthread_join(thread, nullptr);
     }
-    auto endTime = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> duration = endTime - startTime;
+    double endTime = omp_get_wtime();
 
     if (index.load() != -1)
     {
-        return {true, passwords[index.load()], duration.count()};
+        return {true, passwords[index.load()], (endTime - startTime) * 1000};
     }
     else
     {
-        return {false, "", duration.count()};
+        return {false, "", (endTime - startTime) * 1000};
     }
 }
 

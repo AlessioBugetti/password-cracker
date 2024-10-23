@@ -12,7 +12,7 @@
 #define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/des.h>
 #endif
-#include <chrono>
+#include <omp.h>
 
 namespace passwordcracker
 {
@@ -26,33 +26,30 @@ std::tuple<bool, std::string, double>
 SequentialDecryptor::Decrypt(const std::string& encryptedPassword) const
 {
     const std::vector<std::string>& passwords = GetPasswords();
+    const int numPasswords = passwords.size();
     std::string salt = encryptedPassword.substr(0, 2);
-    bool found = false;
-    std::string decryptedPassword = "";
-    auto startTime = std::chrono::high_resolution_clock::now();
+
 #ifdef __linux__
     struct crypt_data data;
     data.initialized = 0;
 #else
     char data[14] = {0};
 #endif
-    for (auto tmpPassword : passwords)
+
+    double startTime = omp_get_wtime();
+    for (int index = 0; index < numPasswords; index++)
     {
 #ifdef __linux__
-        std::string encryptedTmpPassword = crypt_r(tmpPassword.c_str(), salt.c_str(), &data);
+        std::string encryptedTmpPassword = crypt_r(passwords[index].c_str(), salt.c_str(), &data);
 #else
-        std::string encryptedTmpPassword = DES_fcrypt(tmpPassword.c_str(), salt.c_str(), data);
+        std::string encryptedTmpPassword = DES_fcrypt(passwords[index].c_str(), salt.c_str(), data);
 #endif
         if (encryptedTmpPassword == encryptedPassword)
         {
-            found = true;
-            decryptedPassword = tmpPassword;
-            break;
+            return {true, passwords[index], (omp_get_wtime() - startTime) * 1000};
         }
     }
-    auto endTime = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> duration = endTime - startTime;
-    return {found, decryptedPassword, duration.count()};
+    return {false, "", (omp_get_wtime() - startTime) * 1000};
 }
 
 } // namespace passwordcracker

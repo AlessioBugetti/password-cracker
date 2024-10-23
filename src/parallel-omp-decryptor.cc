@@ -44,13 +44,6 @@ ParallelOmpDecryptor::Decrypt(const std::string& encryptedPassword) const
     int numPasswords = passwords.size();
     std::string salt = encryptedPassword.substr(0, 2);
 
-#ifdef __linux__
-    struct crypt_data data;
-    data.initialized = 0;
-#else
-    char data[14] = {0};
-#endif
-
     int index = -1;
 
     int numThreads = GetNumThreads();
@@ -58,10 +51,16 @@ ParallelOmpDecryptor::Decrypt(const std::string& encryptedPassword) const
     double startTime = omp_get_wtime();
 
 #pragma omp parallel default(none) shared(index, passwords)                                        \
-    firstprivate(encryptedPassword, numPasswords, salt, data) num_threads(numThreads)
+    firstprivate(encryptedPassword, numPasswords, salt) num_threads(numThreads)
     {
+#ifdef __linux__
+        struct crypt_data data;
+        data.initialized = 0;
+#else
+        char data[14] = {0};
+#endif
 #pragma omp for
-        for (int i = 0; i < numPasswords; ++i)
+        for (int i = 0; i < numPasswords; i++)
         {
 #pragma omp cancellation point for
 
@@ -85,7 +84,7 @@ ParallelOmpDecryptor::Decrypt(const std::string& encryptedPassword) const
 
     if (index == -1)
     {
-        return {false, "", endTime - startTime};
+        return {false, "", (endTime - startTime) * 1000};
     }
     else
     {
