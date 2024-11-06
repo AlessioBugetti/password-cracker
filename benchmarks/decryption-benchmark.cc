@@ -7,7 +7,6 @@
 #include "parallel-omp-decryptor.h"
 #include "parallel-pthread-decryptor.h"
 #include "sequential-decryptor.h"
-
 #include <fstream>
 #include <getopt.h>
 #include <iomanip>
@@ -190,18 +189,12 @@ main(int argc, char** argv)
     std::vector<std::string> passwords;
     passwords.reserve(3);
 
-    if (allPasswords.size() > 1024)
+    int numPasswords = allPasswords.size();
+    for (int i = 0; i < numExecutions.value() - 1; i++)
     {
-        passwords.push_back(allPasswords[1024]);
+        passwords.push_back(allPasswords[int(numPasswords / numExecutions.value()) * i]);
     }
-    if (allPasswords.size() > 1414582)
-    {
-        passwords.push_back(allPasswords[1414582]);
-    }
-    if (allPasswords.size() > 2829163)
-    {
-        passwords.push_back(allPasswords[2829163]);
-    }
+    passwords.push_back(allPasswords[numPasswords - 1]);
 
     std::vector<std::string> encryptedPasswords;
     encryptedPasswords.reserve(passwords.size());
@@ -244,26 +237,22 @@ main(int argc, char** argv)
     {
         std::cout << "Benchmarking decryption for password: " << passwords[i] << std::endl
                   << std::endl;
-        for (int j = 0; j < numExecutions; j++)
+
+        startTimeSeq = omp_get_wtime();
+        auto [foundSeq, decryptedPasswordSeq] = sequentialDecryptor->Decrypt(encryptedPasswords[i]);
+        endTimeSeq = omp_get_wtime();
+        timeSeq = (endTimeSeq - startTimeSeq) * 1000;
+        if (foundSeq)
         {
-            startTimeSeq = omp_get_wtime();
-            auto [foundSeq, decryptedPasswordSeq] =
-                sequentialDecryptor->Decrypt(encryptedPasswords[i]);
-            endTimeSeq = omp_get_wtime();
-            timeSeq = (endTimeSeq - startTimeSeq) * 1000;
-            if (foundSeq)
-            {
-                if (timeSeq < minTimeSeq)
-                    minTimeSeq = timeSeq;
-                if (timeSeq > maxTimeSeq)
-                    maxTimeSeq = timeSeq;
-                totalTimeSeq += timeSeq;
-            }
-            else
-            {
-                std::cerr << "Error: Sequential Decryption failed for execution " << j + 1
-                          << std::endl;
-            }
+            if (timeSeq < minTimeSeq)
+                minTimeSeq = timeSeq;
+            if (timeSeq > maxTimeSeq)
+                maxTimeSeq = timeSeq;
+            totalTimeSeq += timeSeq;
+        }
+        else
+        {
+            std::cerr << "Error: Sequential Decryption failed" << std::endl;
         }
 
         for (const int& numThread : numThreads)
@@ -271,104 +260,95 @@ main(int argc, char** argv)
             parallelPThreadDecryptor->SetNumThreads(numThread);
             parallelOmpDecryptor->SetNumThreads(numThread);
 
-            for (int j = 0; j < numExecutions; j++)
+            startTimePThreadPar = omp_get_wtime();
+            auto [foundPThreadPar, decryptedPasswordPThreadPar] =
+                parallelPThreadDecryptor->Decrypt(encryptedPasswords[i]);
+            endTimePThreadPar = omp_get_wtime();
+            timePThreadPar = (endTimePThreadPar - startTimePThreadPar) * 1000;
+
+            if (foundPThreadPar)
             {
-                startTimePThreadPar = omp_get_wtime();
-                auto [foundPThreadPar, decryptedPasswordPThreadPar] =
-                    parallelPThreadDecryptor->Decrypt(encryptedPasswords[i]);
-                endTimePThreadPar = omp_get_wtime();
-                timePThreadPar = (endTimePThreadPar - startTimePThreadPar) * 1000;
+                ParallelStats& parPThreadStats = parallelPThreadStatsMap[numThread];
+                if (timePThreadPar < parPThreadStats.minTimePar)
+                    parPThreadStats.minTimePar = timePThreadPar;
+                if (timePThreadPar > parPThreadStats.maxTimePar)
+                    parPThreadStats.maxTimePar = timePThreadPar;
+                parPThreadStats.totalTimePar += timePThreadPar;
+            }
+            else
+            {
+                std::cerr << "Error: Parallel PThreads Decryption failed with " << numThread
+                          << " threads" << std::endl;
+            }
 
-                if (foundPThreadPar)
-                {
-                    ParallelStats& parPThreadStats = parallelPThreadStatsMap[numThread];
-                    if (timePThreadPar < parPThreadStats.minTimePar)
-                        parPThreadStats.minTimePar = timePThreadPar;
-                    if (timePThreadPar > parPThreadStats.maxTimePar)
-                        parPThreadStats.maxTimePar = timePThreadPar;
-                    parPThreadStats.totalTimePar += timePThreadPar;
-                }
-                else
-                {
-                    std::cerr << "Error: Parallel PThreads Decryption failed for execution "
-                              << j + 1 << " with " << numThread << " threads" << std::endl;
-                }
+            startTimeOmpPar = omp_get_wtime();
+            auto [foundOmpPar, decryptedPasswordOmpPar] =
+                parallelOmpDecryptor->Decrypt(encryptedPasswords[i]);
+            endTimeOmpPar = omp_get_wtime();
+            timeOmpPar = (endTimeOmpPar - startTimeOmpPar) * 1000;
 
-                startTimeOmpPar = omp_get_wtime();
-                auto [foundOmpPar, decryptedPasswordOmpPar] =
-                    parallelOmpDecryptor->Decrypt(encryptedPasswords[i]);
-                endTimeOmpPar = omp_get_wtime();
-                timeOmpPar = (endTimeOmpPar - startTimeOmpPar) * 1000;
-
-                if (foundOmpPar)
-                {
-                    ParallelStats& parOmpStats = parallelOmpStatsMap[numThread];
-                    if (timeOmpPar < parOmpStats.minTimePar)
-                        parOmpStats.minTimePar = timeOmpPar;
-                    if (timeOmpPar > parOmpStats.maxTimePar)
-                        parOmpStats.maxTimePar = timeOmpPar;
-                    parOmpStats.totalTimePar += timeOmpPar;
-                }
-                else
-                {
-                    std::cerr << "Error: Parallel Omp Decryption failed for execution " << j + 1
-                              << " with " << numThread << " threads" << std::endl;
-                }
+            if (foundOmpPar)
+            {
+                ParallelStats& parOmpStats = parallelOmpStatsMap[numThread];
+                if (timeOmpPar < parOmpStats.minTimePar)
+                    parOmpStats.minTimePar = timeOmpPar;
+                if (timeOmpPar > parOmpStats.maxTimePar)
+                    parOmpStats.maxTimePar = timeOmpPar;
+                parOmpStats.totalTimePar += timeOmpPar;
+            }
+            else
+            {
+                std::cerr << "Error: Parallel Omp Decryption failed with " << numThread
+                          << " threads" << std::endl;
             }
         }
+    }
 
-        avgTimeSeq = totalTimeSeq / numExecutions.value();
+    avgTimeSeq = totalTimeSeq / numExecutions.value();
 
-        std::cout << "Sequential Decryption:" << std::endl;
+    std::cout << "Sequential Decryption:" << std::endl;
 
-        std::cout << std::left << std::setw(20) << "Min Time (ms)" << std::setw(20)
-                  << "Max Time (ms)" << std::setw(20) << "Avg Time (ms)" << std::endl;
+    std::cout << std::left << std::setw(20) << "Min Time (ms)" << std::setw(20) << "Max Time (ms)"
+              << std::setw(20) << "Avg Time (ms)" << std::endl;
 
-        std::cout << std::left << std::setw(20) << minTimeSeq << std::setw(20) << maxTimeSeq
-                  << std::setw(20) << avgTimeSeq << std::endl;
+    std::cout << std::left << std::setw(20) << minTimeSeq << std::setw(20) << maxTimeSeq
+              << std::setw(20) << avgTimeSeq << std::endl;
 
-        std::cout << "\nParallel Omp Decryption and Speedup:" << std::endl;
+    std::cout << "\nParallel Omp Decryption and Speedup:" << std::endl;
 
-        std::cout << std::left << std::setw(12) << "Threads" << std::right << std::setw(20)
-                  << "Min Time (ms)" << std::setw(20) << "Max Time (ms)" << std::setw(20)
-                  << "Avg Time (ms)" << std::setw(20) << "Speedup" << std::endl;
+    std::cout << std::left << std::setw(12) << "Threads" << std::right << std::setw(20)
+              << "Min Time (ms)" << std::setw(20) << "Max Time (ms)" << std::setw(20)
+              << "Avg Time (ms)" << std::setw(20) << "Speedup" << std::endl;
 
-        for (const int& numThread : numThreads)
-        {
-            const ParallelStats& parOmpStats = parallelOmpStatsMap[numThread];
+    for (const int& numThread : numThreads)
+    {
+        const ParallelStats& parOmpStats = parallelOmpStatsMap[numThread];
 
-            avgTimeOmpPar = parOmpStats.totalTimePar / numExecutions.value();
-            ompSpeedup = avgTimeSeq / avgTimeOmpPar;
+        avgTimeOmpPar = parOmpStats.totalTimePar / numExecutions.value();
+        ompSpeedup = avgTimeSeq / avgTimeOmpPar;
 
-            std::cout << std::left << std::setw(12) << numThread << std::right << std::setw(20)
-                      << parOmpStats.minTimePar << std::setw(20) << parOmpStats.maxTimePar
-                      << std::setw(20) << avgTimeOmpPar << std::setw(20) << ompSpeedup << std::endl;
-        }
+        std::cout << std::left << std::setw(12) << numThread << std::right << std::setw(20)
+                  << parOmpStats.minTimePar << std::setw(20) << parOmpStats.maxTimePar
+                  << std::setw(20) << avgTimeOmpPar << std::setw(20) << ompSpeedup << std::endl;
+    }
 
-        std::cout << "\nParallel PThreads Decryption and Speedup:" << std::endl;
+    std::cout << "\nParallel PThreads Decryption and Speedup:" << std::endl;
 
-        std::cout << std::left << std::setw(12) << "Threads" << std::right << std::setw(20)
-                  << "Min Time (ms)" << std::setw(20) << "Max Time (ms)" << std::setw(20)
-                  << "Avg Time (ms)" << std::setw(20) << "Speedup" << std::endl;
+    std::cout << std::left << std::setw(12) << "Threads" << std::right << std::setw(20)
+              << "Min Time (ms)" << std::setw(20) << "Max Time (ms)" << std::setw(20)
+              << "Avg Time (ms)" << std::setw(20) << "Speedup" << std::endl;
 
-        for (const int& numThread : numThreads)
-        {
-            const ParallelStats& parPThreadStats = parallelPThreadStatsMap[numThread];
+    for (const int& numThread : numThreads)
+    {
+        const ParallelStats& parPThreadStats = parallelPThreadStatsMap[numThread];
 
-            avgTimePThreadPar = parPThreadStats.totalTimePar / numExecutions.value();
-            pthreadSpeedup = avgTimeSeq / avgTimePThreadPar;
+        avgTimePThreadPar = parPThreadStats.totalTimePar / numExecutions.value();
+        pthreadSpeedup = avgTimeSeq / avgTimePThreadPar;
 
-            std::cout << std::left << std::setw(12) << numThread << std::right << std::setw(20)
-                      << parPThreadStats.minTimePar << std::setw(20) << parPThreadStats.maxTimePar
-                      << std::setw(20) << avgTimePThreadPar << std::setw(20) << pthreadSpeedup
-                      << std::endl;
-        }
-        std::cout << std::endl;
-        parallelPThreadStatsMap.clear();
-        parallelOmpStatsMap.clear();
-        minTimeSeq = std::numeric_limits<double>::max();
-        maxTimeSeq = std::numeric_limits<double>::min();
-        totalTimeSeq = 0.0;
+        std::cout << std::left << std::setw(12) << numThread << std::right << std::setw(20)
+                  << parPThreadStats.minTimePar << std::setw(20) << parPThreadStats.maxTimePar
+                  << std::setw(20) << avgTimePThreadPar << std::setw(20) << pthreadSpeedup
+                  << std::endl;
     }
 
     return 0;

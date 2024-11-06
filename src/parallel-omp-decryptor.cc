@@ -59,13 +59,10 @@ ParallelOmpDecryptor::Decrypt(const std::string& encryptedPassword) const
 #pragma omp for
         for (int i = 0; i < numPasswords; i++)
         {
-#pragma omp cancellation point for
-
 #ifdef __linux__
             std::string encryptedTmpPassword = crypt_r(passwords[i].c_str(), salt.c_str(), &data);
 #else
-            DES_fcrypt(passwords[i].c_str(), salt.c_str(), data);
-            std::string encryptedTmpPassword(data);
+            std::string encryptedTmpPassword = DES_fcrypt(passwords[i].c_str(), salt.c_str(), data);
 #endif
 
             if (encryptedTmpPassword == encryptedPassword)
@@ -74,6 +71,7 @@ ParallelOmpDecryptor::Decrypt(const std::string& encryptedPassword) const
                 index = i;
 #pragma omp cancel for
             }
+#pragma omp cancellation point for
         }
     }
 
