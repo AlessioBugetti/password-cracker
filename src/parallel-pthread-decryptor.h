@@ -8,6 +8,7 @@
 #define PARALLEL_PTHREAD_DECRYPTOR_H
 
 #include "parallel-decryptor.h"
+#include <atomic>
 
 namespace passwordcracker
 {
@@ -61,6 +62,16 @@ class ParallelPThreadDecryptor : public ParallelDecryptor
     std::tuple<bool, std::string> Decrypt(const std::string& encryptedPassword) const override;
 
   private:
+    struct ThreadData
+    {
+        const std::vector<std::string>* passwords;
+        const std::string* encryptedPassword;
+        const std::string* salt;
+        std::atomic<int>* index;
+        int start;
+        int end;
+    };
+
     /**
      * @brief Thread function for performing decryption.
      *
@@ -70,7 +81,7 @@ class ParallelPThreadDecryptor : public ParallelDecryptor
      * @param arg A pointer to the ThreadData structure containing thread-specific data
      * @return nullptr
      */
-    static void* DecryptThread(void* arg);
+    static void* DecryptWorker(void* arg);
 };
 
 } // namespace passwordcracker

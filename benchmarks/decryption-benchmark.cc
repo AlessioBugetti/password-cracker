@@ -82,7 +82,7 @@ FilterPasswords(const std::string& filePath)
 int
 main(int argc, char** argv)
 {
-    int numThreads[] = {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64};
+    int numThreads[] = {2, 4, 6, 8, 12, 16, 32, 64};
     std::optional<int> numExecutions;
 
     struct option longOptions[] = {{"numExecutions", required_argument, nullptr, 'e'},
@@ -235,13 +235,12 @@ main(int argc, char** argv)
 
     for (int i = 0; i < encryptedPasswords.size(); i++)
     {
-        std::cout << "Benchmarking decryption for password: " << passwords[i] << std::endl
-                  << std::endl;
+        std::cout << "Benchmarking decryption for password: " << passwords[i] << std::endl;
 
         startTimeSeq = omp_get_wtime();
         auto [foundSeq, decryptedPasswordSeq] = sequentialDecryptor->Decrypt(encryptedPasswords[i]);
         endTimeSeq = omp_get_wtime();
-        timeSeq = (endTimeSeq - startTimeSeq) * 1000;
+        timeSeq = endTimeSeq - startTimeSeq;
         if (foundSeq)
         {
             if (timeSeq < minTimeSeq)
@@ -264,7 +263,7 @@ main(int argc, char** argv)
             auto [foundPThreadPar, decryptedPasswordPThreadPar] =
                 parallelPThreadDecryptor->Decrypt(encryptedPasswords[i]);
             endTimePThreadPar = omp_get_wtime();
-            timePThreadPar = (endTimePThreadPar - startTimePThreadPar) * 1000;
+            timePThreadPar = endTimePThreadPar - startTimePThreadPar;
 
             if (foundPThreadPar)
             {
@@ -285,7 +284,7 @@ main(int argc, char** argv)
             auto [foundOmpPar, decryptedPasswordOmpPar] =
                 parallelOmpDecryptor->Decrypt(encryptedPasswords[i]);
             endTimeOmpPar = omp_get_wtime();
-            timeOmpPar = (endTimeOmpPar - startTimeOmpPar) * 1000;
+            timeOmpPar = endTimeOmpPar - startTimeOmpPar;
 
             if (foundOmpPar)
             {
@@ -306,10 +305,10 @@ main(int argc, char** argv)
 
     avgTimeSeq = totalTimeSeq / numExecutions.value();
 
-    std::cout << "Sequential Decryption:" << std::endl;
+    std::cout << "\nSequential Decryption:" << std::endl;
 
-    std::cout << std::left << std::setw(20) << "Min Time (ms)" << std::setw(20) << "Max Time (ms)"
-              << std::setw(20) << "Avg Time (ms)" << std::endl;
+    std::cout << std::left << std::setw(20) << "Min Time (s)" << std::setw(20) << "Max Time (s)"
+              << std::setw(20) << "Avg Time (s)" << std::endl;
 
     std::cout << std::left << std::setw(20) << minTimeSeq << std::setw(20) << maxTimeSeq
               << std::setw(20) << avgTimeSeq << std::endl;
@@ -317,8 +316,8 @@ main(int argc, char** argv)
     std::cout << "\nParallel Omp Decryption and Speedup:" << std::endl;
 
     std::cout << std::left << std::setw(12) << "Threads" << std::right << std::setw(20)
-              << "Min Time (ms)" << std::setw(20) << "Max Time (ms)" << std::setw(20)
-              << "Avg Time (ms)" << std::setw(20) << "Speedup" << std::endl;
+              << "Min Time (s)" << std::setw(20) << "Max Time (s)" << std::setw(20)
+              << "Avg Time (s)" << std::setw(20) << "Speedup" << std::endl;
 
     for (const int& numThread : numThreads)
     {
@@ -335,8 +334,8 @@ main(int argc, char** argv)
     std::cout << "\nParallel PThreads Decryption and Speedup:" << std::endl;
 
     std::cout << std::left << std::setw(12) << "Threads" << std::right << std::setw(20)
-              << "Min Time (ms)" << std::setw(20) << "Max Time (ms)" << std::setw(20)
-              << "Avg Time (ms)" << std::setw(20) << "Speedup" << std::endl;
+              << "Min Time (s)" << std::setw(20) << "Max Time (s)" << std::setw(20)
+              << "Avg Time (s)" << std::setw(20) << "Speedup" << std::endl;
 
     for (const int& numThread : numThreads)
     {

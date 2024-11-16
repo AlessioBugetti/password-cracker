@@ -12,7 +12,6 @@
 #define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/des.h>
 #endif
-#include <atomic>
 #include <pthread.h>
 
 namespace passwordcracker
@@ -39,90 +38,76 @@ ParallelPThreadDecryptor::ParallelPThreadDecryptor(int numThreads,
 {
 }
 
-struct ThreadData
-{
-    const std::vector<std::string>* passwords;
-    const std::string* encryptedPassword;
-    int startIndex;
-    int endIndex;
-    std::atomic<int>* index;
-};
-
 void*
-ParallelPThreadDecryptor::DecryptThread(void* arg)
+ParallelPThreadDecryptor::DecryptWorker(void* arg)
 {
-    ThreadData* threadData = static_cast<ThreadData*>(arg);
-    std::string salt = threadData->encryptedPassword->substr(0, 2);
+    ThreadData* data = static_cast<ThreadData*>(arg);
 
 #ifdef __linux__
-    struct crypt_data data;
-    data.initialized = 0;
+    struct crypt_data cryptBuffer;
+    cryptBuffer.initialized = 0;
 #else
-    char data[14] = {0};
+    char cryptBuffer[14] = {0};
 #endif
 
-    if (threadData->index->load() != -1)
+    for (int i = data->start; i < data->end; ++i)
     {
-        return nullptr;
-    }
+        if (data->index->load() != -1)
+            return nullptr; // Early exit if another thread found the password
 
-    for (int i = threadData->startIndex;
-         i < threadData->endIndex && threadData->index->load() == -1;
-         i++)
-    {
 #ifdef __linux__
         std::string encryptedTmpPassword =
-            crypt_r((*threadData->passwords)[i].c_str(), salt.c_str(), &data);
+            crypt_r((*data->passwords)[i].c_str(), data->salt->c_str(), &cryptBuffer);
 #else
-        DES_fcrypt((*threadData->passwords)[i].c_str(), salt.c_str(), data);
-        std::string encryptedTmpPassword(data);
+        std::string encryptedTmpPassword =
+            DES_fcrypt((*data->passwords)[i].c_str(), data->salt->c_str(), cryptBuffer);
 #endif
 
-        if (encryptedTmpPassword == *(threadData->encryptedPassword))
+        if (encryptedTmpPassword == *data->encryptedPassword)
         {
-            threadData->index->store(i);
+            data->index->store(i);
             return nullptr;
         }
     }
+
     return nullptr;
 }
 
 std::tuple<bool, std::string>
 ParallelPThreadDecryptor::Decrypt(const std::string& encryptedPassword) const
 {
+    const std::vector<std::string>& passwords = GetPasswords();
+    int numPasswords = passwords.size();
+    std::string salt = encryptedPassword.substr(0, 2);
+
     std::atomic<int> index(-1);
-
     int numThreads = GetNumThreads();
-
     std::vector<pthread_t> threads(numThreads);
     std::vector<ThreadData> threadData(numThreads);
 
-    const std::vector<std::string>& passwords = GetPasswords();
-    int chunkSize = passwords.size() / numThreads;
-    int remaining = passwords.size() % numThreads;
+    int chunkSize = (numPasswords + numThreads - 1) / numThreads; // Divide workload
 
-    for (int i = 0; i < numThreads; i++)
+    for (int i = 0; i < numThreads; ++i)
     {
-        int startIndex = i * chunkSize;
-        int endIndex =
-            (i == numThreads - 1) ? (startIndex + chunkSize + remaining) : (startIndex + chunkSize);
+        int start = i * chunkSize;
+        int end = std::min(start + chunkSize, numPasswords);
 
-        threadData[i] = {&passwords, &encryptedPassword, startIndex, endIndex, &index};
-        pthread_create(&threads[i], nullptr, DecryptThread, (void*)&threadData[i]);
+        threadData[i] = {&passwords, &encryptedPassword, &salt, &index, start, end};
+        pthread_create(&threads[i], nullptr, DecryptWorker, &threadData[i]);
     }
 
-    for (auto& thread : threads)
+    for (pthread_t& thread : threads)
     {
         pthread_join(thread, nullptr);
     }
 
-    if (index.load() != -1)
+    if (index.load() == -1)
     {
-        return {true, passwords[index.load()]};
+        return {false, ""};
     }
     else
     {
-        return {false, ""};
+        return {true, passwords[index.load()]};
     }
 }
 

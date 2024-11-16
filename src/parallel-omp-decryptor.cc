@@ -51,18 +51,20 @@ ParallelOmpDecryptor::Decrypt(const std::string& encryptedPassword) const
     firstprivate(encryptedPassword, numPasswords, salt) num_threads(numThreads)
     {
 #ifdef __linux__
-        struct crypt_data data;
-        data.initialized = 0;
+        struct crypt_data cryptBuffer;
+        cryptBuffer.initialized = 0;
 #else
-        char data[14] = {0};
+        char cryptBuffer[14] = {0};
 #endif
 #pragma omp for
         for (int i = 0; i < numPasswords; i++)
         {
 #ifdef __linux__
-            std::string encryptedTmpPassword = crypt_r(passwords[i].c_str(), salt.c_str(), &data);
+            std::string encryptedTmpPassword =
+                crypt_r(passwords[i].c_str(), salt.c_str(), &cryptBuffer);
 #else
-            std::string encryptedTmpPassword = DES_fcrypt(passwords[i].c_str(), salt.c_str(), data);
+            std::string encryptedTmpPassword =
+                DES_fcrypt(passwords[i].c_str(), salt.c_str(), cryptBuffer);
 #endif
 
             if (encryptedTmpPassword == encryptedPassword)
